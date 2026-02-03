@@ -12,7 +12,7 @@
 # Proxy API requests to Railway backend (avoids CORS issues)
 [[redirects]]
   from = "/api/*"
-  to = "https://finance-trackerweb-production.up.railway.app/api/:splat"
+  to = "https://finance-trackerapi-production.up.railway.app/api/:splat"
   status = 200
   force = true
 
