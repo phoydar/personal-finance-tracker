@@ -1,9 +1,12 @@
 // API base URL from environment variable
-const API_URL = process.env.REACT_APP_API_URL || '/api';
+// In production: full URL like https://api.example.com
+// In development: empty string (uses proxy from package.json)
+const API_BASE = process.env.REACT_APP_API_URL || '';
 
 // Helper function to make API requests
 async function apiRequest(endpoint, options = {}) {
-  const url = `${API_URL}${endpoint}`;
+  // All endpoints are under /api prefix
+  const url = `${API_BASE}/api${endpoint}`;
   
   const response = await fetch(url, {
     ...options,
