@@ -36,5 +36,5 @@ coverage/
 localhost.pem
 localhost-key.pem
 
-# Package locks (keep only root package-lock.json for workspaces)
-packages/*/package-lock.json
+# Package locks (API uses root lock, web has its own for Netlify)
+packages/api/package-lock.json

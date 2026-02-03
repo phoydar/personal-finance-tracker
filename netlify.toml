@@ -1,8 +1,13 @@
 # Deploy only the web package from the monorepo
 [build]
   base = "packages/web"
-  command = "npm run build"
+  command = "npm install && npm run build"
   publish = "build"
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF . ../web"
+
+[build.environment]
+  NPM_FLAGS = "--prefix=."
+  NODE_VERSION = "20"
 
 # SPA routing - redirect all routes to index.html
 [[redirects]]
