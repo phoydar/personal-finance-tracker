@@ -8,14 +8,34 @@ import {
   HttpException,
   HttpStatus
 } from "@nestjs/common"
+import {
+  IsString,
+  IsOptional,
+  ValidateNested,
+  IsNotEmpty
+} from "class-validator"
+import { Type } from "class-transformer"
 import { PlaidService } from "./plaid.service"
 
+class InstitutionDto {
+  @IsOptional()
+  @IsString()
+  institution_id?: string
+
+  @IsOptional()
+  @IsString()
+  name?: string
+}
+
 class ExchangeTokenDto {
+  @IsString()
+  @IsNotEmpty()
   public_token: string
-  institution?: {
-    institution_id?: string
-    name?: string
-  }
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => InstitutionDto)
+  institution?: InstitutionDto
 }
 
 @Controller()
@@ -36,6 +56,15 @@ export class PlaidController {
 
   @Post("exchange_public_token")
   async exchangePublicToken(@Body() body: ExchangeTokenDto) {
+    console.log("exchange_public_token received body:", JSON.stringify(body))
+
+    if (!body.public_token) {
+      throw new HttpException(
+        "public_token is required",
+        HttpStatus.BAD_REQUEST
+      )
+    }
+
     try {
       const result = await this.plaidService.exchangePublicToken(
         body.public_token,
@@ -43,6 +72,10 @@ export class PlaidController {
       )
       return { success: true, ...result }
     } catch (error: any) {
+      console.error(
+        "exchange_public_token error:",
+        error.response?.data || error.message
+      )
       throw new HttpException(
         error.response?.data?.error_message || "Failed to exchange token",
         error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR
