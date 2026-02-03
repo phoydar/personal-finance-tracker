@@ -28,7 +28,9 @@ import { HealthController } from "./health.controller"
         ssl:
           configService.get<string>("NODE_ENV") === "production"
             ? { rejectUnauthorized: false }
-            : false
+            : false,
+        retryAttempts: 10,
+        retryDelay: 3000
       })
     }),
 
