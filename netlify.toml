@@ -1,7 +1,8 @@
+# Deploy only the web package from the monorepo
 [build]
-  base = "/"
-  command = "npm run build:web"
-  publish = "packages/web/build"
+  base = "packages/web"
+  command = "npm run build"
+  publish = "build"
 
 # SPA routing - redirect all routes to index.html
 [[redirects]]
