@@ -9,6 +9,13 @@
   NPM_FLAGS = "--prefix=."
   NODE_VERSION = "20"
 
+# Proxy API requests to Railway backend (avoids CORS issues)
+[[redirects]]
+  from = "/api/*"
+  to = "https://finance-trackerweb-production.up.railway.app/api/:splat"
+  status = 200
+  force = true
+
 # SPA routing - redirect all routes to index.html
 [[redirects]]
   from = "/*"
