@@ -11,10 +11,14 @@ function PlaidLinkHandler({ linkToken, onSuccess, onExit, isOAuth, shouldOpen })
   
   const handleSuccess = useCallback(async (publicToken, metadata) => {
     try {
-      await api.exchangePublicToken({
+      console.log('Plaid Link success - publicToken:', publicToken);
+      console.log('Plaid Link success - metadata:', metadata);
+      const payload = {
         public_token: publicToken,
         institution: metadata.institution,
-      });
+      };
+      console.log('Sending exchange request with payload:', payload);
+      await api.exchangePublicToken(payload);
       
       // Trigger initial sync
       await api.sync();

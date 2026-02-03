@@ -71,6 +71,15 @@ export class PlaidService {
     publicToken: string,
     institution?: { institution_id?: string; name?: string }
   ): Promise<{ item_id: string }> {
+    if (!publicToken || publicToken.trim() === "") {
+      throw new Error("public_token is required and cannot be empty")
+    }
+
+    console.log(
+      "PlaidService.exchangePublicToken - publicToken received:",
+      publicToken ? "present" : "missing"
+    )
+
     const exchangeResponse = await this.client.itemPublicTokenExchange({
       public_token: publicToken
     })
