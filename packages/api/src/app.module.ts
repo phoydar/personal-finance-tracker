@@ -23,7 +23,9 @@ import { HealthController } from "./health.controller"
         type: "postgres",
         url: configService.get<string>("DATABASE_URL"),
         entities: [__dirname + "/**/*.entity{.ts,.js}"],
-        synchronize: configService.get<string>("NODE_ENV") !== "production",
+        migrations: [__dirname + "/database/migrations/*{.ts,.js}"],
+        migrationsRun: true, // Auto-run migrations on startup
+        synchronize: false, // Never use synchronize in production
         logging: configService.get<string>("NODE_ENV") !== "production",
         ssl:
           configService.get<string>("NODE_ENV") === "production"
