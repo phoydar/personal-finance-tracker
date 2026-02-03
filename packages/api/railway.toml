@@ -1,0 +1,19 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "npm run start:prod"
+healthcheckPath = "/api/health"
+healthcheckTimeout = 100
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
+
+# Environment variables (set in Railway dashboard)
+# DATABASE_URL = (auto-provisioned by Railway PostgreSQL)
+# PLAID_CLIENT_ID = xxx
+# PLAID_SECRET = xxx
+# PLAID_ENV = production
+# PLAID_REDIRECT_URI = https://your-app.netlify.app/
+# FRONTEND_URL = https://your-app.netlify.app
+# PORT = 3001
+# NODE_ENV = production
