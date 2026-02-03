@@ -19,9 +19,15 @@ async function bootstrap() {
 
     // Enable CORS for frontend
     app.enableCors({
-      origin: [frontendUrl, "http://localhost:3000", "https://localhost:3000"],
-      methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-      credentials: true
+      origin: [
+        frontendUrl,
+        "http://localhost:3000",
+        "https://localhost:3000",
+        "https://pshfinances.netlify.app"
+      ],
+      methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+      credentials: true,
+      allowedHeaders: ["Content-Type", "Authorization", "Accept"]
     })
 
     // Global validation pipe
