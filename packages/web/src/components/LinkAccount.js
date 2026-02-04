@@ -120,6 +120,7 @@ function LinkAccount({ onSuccess }) {
       }
       
       const data = await api.createLinkToken();
+      this.logger.log('Link token data:', data);
       
       if (data.error) {
         console.error('Link token error:', data);
