@@ -22,8 +22,9 @@ function AccountCard({ account, onUpdateName }) {
   };
 
   const balance = parseFloat(account.current_balance) || 0;
-  const isPositive = balance > 0 && 
-    !['credit', 'loan'].includes(account.type);
+  const isPositive = ['credit', 'loan'].includes(account.type)
+    ? balance <= 0  // For credit/loan: $0 or credits are good
+    : balance >= 0; // For other accounts: positive or zero balance is good
 
   const handleNameClick = () => {
     setEditedName(account.name || '');
