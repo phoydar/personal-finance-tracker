@@ -21,7 +21,8 @@ function AccountCard({ account, onUpdateName }) {
     }).format(amount);
   };
 
-  const isPositive = account.current_balance >= 0 && 
+  const balance = parseFloat(account.current_balance) || 0;
+  const isPositive = balance > 0 && 
     !['credit', 'loan'].includes(account.type);
 
   const handleNameClick = () => {
@@ -117,7 +118,7 @@ function AccountCard({ account, onUpdateName }) {
         <span className="account-type">{account.subtype || account.type}</span>
       </div>
       <div className={`account-balance ${isPositive ? 'positive' : 'negative'}`}>
-        {formatCurrency(Math.abs(account.current_balance))}
+        {formatCurrency(Math.abs(balance))}
       </div>
       {account.available_balance != null && account.type === 'depository' && (
         <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '8px' }}>

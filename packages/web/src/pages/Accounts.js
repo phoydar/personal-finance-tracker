@@ -163,7 +163,7 @@ function Accounts() {
             const accounts = accountsByType[type];
             if (!accounts || accounts.length === 0) return null;
 
-            const total = accounts.reduce((sum, acc) => sum + (acc.current_balance || 0), 0);
+            const total = accounts.reduce((sum, acc) => sum + (parseFloat(acc.current_balance) || 0), 0);
 
             return (
               <div key={type} style={{ marginBottom: '32px' }}>
