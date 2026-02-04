@@ -60,7 +60,7 @@ export class PlaidService {
     if (redirectUri && redirectUri.trim() !== "") {
       // Normalize the redirect URI (remove trailing slash for consistency)
       const normalizedUri = redirectUri.replace(/\/$/, "")
-      config.redirect_uri = normalizedUri
+      config.redirect_uri = redirectUri
       this.logger.log(`Creating link token with redirect_uri: ${normalizedUri}`)
     } else {
       this.logger.log(
