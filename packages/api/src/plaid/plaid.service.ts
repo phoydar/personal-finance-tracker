@@ -55,16 +55,29 @@ export class PlaidService {
       country_codes: [CountryCode.Us]
     }
 
-    if (redirectUri) {
-      config.redirect_uri = redirectUri
+    // Only add redirect_uri if explicitly set (for OAuth flow)
+    // If not using OAuth, don't include it at all
+    if (redirectUri && redirectUri.trim() !== "") {
+      // Normalize the redirect URI (remove trailing slash for consistency)
+      const normalizedUri = redirectUri.replace(/\/$/, "")
+      config.redirect_uri = normalizedUri
+      this.logger.log(`Creating link token with redirect_uri: ${normalizedUri}`)
+    } else {
+      this.logger.log(
+        "Creating link token WITHOUT redirect_uri (standard flow)"
+      )
     }
 
-    this.logger.log(
-      `Creating link token with redirect_uri: ${redirectUri || "none"}`
-    )
-
-    const response = await this.client.linkTokenCreate(config)
-    return { link_token: response.data.link_token }
+    try {
+      const response = await this.client.linkTokenCreate(config)
+      return { link_token: response.data.link_token }
+    } catch (error: any) {
+      this.logger.error(
+        "Failed to create link token:",
+        error.response?.data || error.message
+      )
+      throw error
+    }
   }
 
   async exchangePublicToken(

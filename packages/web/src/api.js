@@ -28,10 +28,15 @@ async function apiRequest(endpoint, options = {}) {
 export const api = {
   // Plaid
   createLinkToken: () => apiRequest('/create_link_token'),
-  exchangePublicToken: (data) => apiRequest('/exchange_public_token', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  }),
+  exchangePublicToken: (data) => {
+    console.log('api.exchangePublicToken - input data:', data);
+    const body = JSON.stringify(data);
+    console.log('api.exchangePublicToken - stringified body:', body);
+    return apiRequest('/exchange_public_token', {
+      method: 'POST',
+      body: body,
+    });
+  },
   sync: () => apiRequest('/sync', { method: 'POST' }),
   refreshBalances: () => apiRequest('/refresh_balances', { method: 'POST' }),
   syncLiabilities: () => apiRequest('/sync_liabilities', { method: 'POST' }),

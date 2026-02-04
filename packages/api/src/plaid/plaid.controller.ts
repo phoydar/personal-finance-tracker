@@ -56,9 +56,19 @@ export class PlaidController {
 
   @Post("exchange_public_token")
   async exchangePublicToken(@Body() body: ExchangeTokenDto) {
-    console.log("exchange_public_token received body:", JSON.stringify(body))
+    console.log(
+      "exchange_public_token received raw body:",
+      JSON.stringify(body)
+    )
+    console.log(
+      "exchange_public_token body.public_token:",
+      body.public_token
+        ? `present (${body.public_token.substring(0, 10)}...)`
+        : "MISSING"
+    )
 
-    if (!body.public_token) {
+    if (!body || !body.public_token) {
+      console.error("Validation failed - body:", body)
       throw new HttpException(
         "public_token is required",
         HttpStatus.BAD_REQUEST
