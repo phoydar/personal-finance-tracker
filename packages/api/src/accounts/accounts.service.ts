@@ -88,4 +88,22 @@ export class AccountsService {
       updated_at: liability.updatedAt
     }))
   }
+
+  async updateAccountName(accountId: string, name: string) {
+    const account = await this.accountRepository.findOne({
+      where: { id: accountId }
+    })
+
+    if (!account) {
+      return null
+    }
+
+    account.name = name
+    await this.accountRepository.save(account)
+
+    return {
+      id: account.id,
+      name: account.name
+    }
+  }
 }

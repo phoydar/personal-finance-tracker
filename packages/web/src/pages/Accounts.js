@@ -48,6 +48,21 @@ function Accounts() {
     }
   };
 
+  const handleUpdateAccountName = async (accountId, newName) => {
+    await api.updateAccountName(accountId, newName);
+    // Update the local state to reflect the change immediately
+    setItems(prevItems => 
+      prevItems.map(item => ({
+        ...item,
+        accounts: item.accounts?.map(account => 
+          account.id === accountId 
+            ? { ...account, name: newName }
+            : account
+        )
+      }))
+    );
+  };
+
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -164,7 +179,11 @@ function Accounts() {
                 </div>
                 <div className="accounts-grid">
                   {accounts.map((account) => (
-                    <AccountCard key={account.id} account={account} />
+                    <AccountCard 
+                      key={account.id} 
+                      account={account} 
+                      onUpdateName={handleUpdateAccountName}
+                    />
                   ))}
                 </div>
               </div>

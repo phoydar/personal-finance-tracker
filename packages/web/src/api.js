@@ -48,6 +48,10 @@ export const api = {
   // Accounts
   getAccounts: () => apiRequest('/accounts'),
   getLiabilities: () => apiRequest('/liabilities'),
+  updateAccountName: (accountId, name) => apiRequest(`/accounts/${accountId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ name }),
+  }),
   
   // Transactions
   getTransactions: (params) => {
