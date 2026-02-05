@@ -71,6 +71,16 @@ export const api = {
   getNetWorth: () => apiRequest('/networth'),
   saveNetWorthSnapshot: () => apiRequest('/networth/snapshot', { method: 'POST' }),
   getNetWorthHistory: (days = 90) => apiRequest(`/networth/history?days=${days}`),
+
+  // Trends
+  getTrendsComposition: (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return apiRequest(`/trends/composition${query ? `?${query}` : ''}`);
+  },
+  getAccountTrends: (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return apiRequest(`/trends/accounts${query ? `?${query}` : ''}`);
+  },
 };
 
 export default api;

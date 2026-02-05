@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard';
 import Accounts from './pages/Accounts';
 import Transactions from './pages/Transactions';
 import NetWorth from './pages/NetWorth';
+import Trends from './pages/Trends';
 
 function App() {
   return (
@@ -51,6 +52,14 @@ function App() {
                 Net Worth
               </NavLink>
             </li>
+            <li>
+              <NavLink to="/trends">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                </svg>
+                Trends
+              </NavLink>
+            </li>
           </ul>
         </nav>
       </aside>
@@ -61,6 +70,7 @@ function App() {
           <Route path="/accounts" element={<Accounts />} />
           <Route path="/transactions" element={<Transactions />} />
           <Route path="/networth" element={<NetWorth />} />
+          <Route path="/trends" element={<Trends />} />
         </Routes>
       </main>
     </div>

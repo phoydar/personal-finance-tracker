@@ -2,11 +2,22 @@ import { Module } from "@nestjs/common"
 import { TypeOrmModule } from "@nestjs/typeorm"
 import { NetworthService } from "./networth.service"
 import { NetworthController } from "./networth.controller"
-import { Account, NetWorthSnapshot } from "../database/entities"
+import { TrendsController } from "./trends.controller"
+import {
+  Account,
+  NetWorthSnapshot,
+  AccountBalanceSnapshot
+} from "../database/entities"
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Account, NetWorthSnapshot])],
-  controllers: [NetworthController],
+  imports: [
+    TypeOrmModule.forFeature([
+      Account,
+      NetWorthSnapshot,
+      AccountBalanceSnapshot
+    ])
+  ],
+  controllers: [NetworthController, TrendsController],
   providers: [NetworthService],
   exports: [NetworthService]
 })
