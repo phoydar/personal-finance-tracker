@@ -127,6 +127,10 @@ personal-finance-tracker/
 | `npm run db:stop`  | Stop local PostgreSQL                      |
 | `npm run db:reset` | Reset database (deletes all data)          |
 
+## Continuous Integration
+
+GitHub Actions runs a clean `npm ci` install and builds both npm workspaces for pull requests targeting `main` and pushes to `main`.
+
 ## API Endpoints
 
 | Endpoint                     | Method | Description                     |
