@@ -1,18 +1,23 @@
 import { Module } from "@nestjs/common"
+import { APP_GUARD } from "@nestjs/core"
 import { ConfigModule, ConfigService } from "@nestjs/config"
 import { TypeOrmModule } from "@nestjs/typeorm"
 import { PlaidModule } from "./plaid/plaid.module"
 import { AccountsModule } from "./accounts/accounts.module"
 import { TransactionsModule } from "./transactions/transactions.module"
 import { NetworthModule } from "./networth/networth.module"
+import { AuthModule } from "./auth/auth.module"
+import { JwtAuthGuard } from "./auth/jwt-auth.guard"
 import { HealthController } from "./health.controller"
+import { validateAuthConfig } from "./auth/auth.config"
 
 @Module({
   imports: [
     // Environment configuration
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: [".env.local", ".env"]
+      envFilePath: [".env.local", ".env"],
+      validate: validateAuthConfig
     }),
 
     // Database configuration
@@ -36,12 +41,21 @@ import { HealthController } from "./health.controller"
       })
     }),
 
+    // Auth module
+    AuthModule,
+
     // Feature modules
     PlaidModule,
     AccountsModule,
     TransactionsModule,
     NetworthModule
   ],
-  controllers: [HealthController]
+  controllers: [HealthController],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard
+    }
+  ]
 })
 export class AppModule {}

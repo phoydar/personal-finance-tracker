@@ -40,12 +40,16 @@ PLAID_SECRET=your_secret
 PLAID_ENV=sandbox
 PLAID_REDIRECT_URI=http://localhost:3000/
 FRONTEND_URL=http://localhost:3000
+GOOGLE_CLIENT_ID=your_google_client_id
+ALLOWED_GOOGLE_EMAILS=you@example.com
+JWT_SECRET=replace_with_a_random_value_of_at_least_32_characters
 PORT=3001
 ```
 
 **Web** (`packages/web/.env`):
 ```env
-REACT_APP_API_URL=http://localhost:3001/api
+REACT_APP_API_URL=http://localhost:3001
+REACT_APP_GOOGLE_CLIENT_ID=your_google_client_id
 ```
 
 ### 4. Start Development Servers
@@ -71,6 +75,9 @@ npm run dev
    - `PLAID_ENV=production`
    - `PLAID_REDIRECT_URI=https://your-app.netlify.app/`
    - `FRONTEND_URL=https://your-app.netlify.app`
+   - `GOOGLE_CLIENT_ID`
+   - `ALLOWED_GOOGLE_EMAILS` (comma-separated Google accounts permitted to sign in)
+   - `JWT_SECRET` (a cryptographically random value of at least 32 characters)
    - `NODE_ENV=production`
 
 ### Netlify (Frontend)
@@ -82,7 +89,12 @@ npm run dev
    - Build command: `npm run build`
    - Publish directory: `packages/web/build`
 4. Set environment variable:
-   - `REACT_APP_API_URL=https://your-api.railway.app/api`
+   - `REACT_APP_API_URL=https://your-api.railway.app`
+   - `REACT_APP_GOOGLE_CLIENT_ID`
+
+`REACT_APP_API_URL` must be the API origin without `/api`; the web client adds
+that path. Google Identity Services uses only the client ID in this flow. Keep
+OAuth client secrets out of Netlify and browser environment variables.
 
 ### Plaid Dashboard
 
@@ -133,9 +145,14 @@ GitHub Actions runs a clean `npm ci` install and builds both npm workspaces for 
 
 ## API Endpoints
 
+Google login and the health check are public. All finance endpoints and
+`/api/auth/me` require the JWT returned by `/api/auth/google`.
+
 | Endpoint                     | Method | Description                     |
 | ---------------------------- | ------ | ------------------------------- |
 | `/api/health`                | GET    | Health check                    |
+| `/api/auth/google`           | POST   | Exchange a Google ID token      |
+| `/api/auth/me`               | GET    | Get the authenticated identity  |
 | `/api/create_link_token`     | GET    | Create Plaid Link token         |
 | `/api/exchange_public_token` | POST   | Exchange token for access       |
 | `/api/items`                 | GET    | List linked institutions        |
