@@ -6,6 +6,9 @@ function Login() {
   const { login } = useAuth();
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const googleClientIdConfigured = Boolean(
+    process.env.REACT_APP_GOOGLE_CLIENT_ID?.trim()
+  );
 
   const handleGoogleSuccess = async (credentialResponse) => {
     setError(null);
@@ -38,7 +41,11 @@ function Login() {
           <p>Use your Google account to securely access your financial data.</p>
 
           <div className="login-button-wrapper">
-            {loading ? (
+            {!googleClientIdConfigured ? (
+              <div className="login-error">
+                Google sign-in is not configured for this deployment.
+              </div>
+            ) : loading ? (
               <div className="login-loading">Signing in...</div>
             ) : (
               <GoogleLogin
@@ -53,7 +60,9 @@ function Login() {
             )}
           </div>
 
-          {error && <div className="login-error">{error}</div>}
+          {error && googleClientIdConfigured && (
+            <div className="login-error">{error}</div>
+          )}
         </div>
       </div>
     </div>

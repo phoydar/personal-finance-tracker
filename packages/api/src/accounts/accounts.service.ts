@@ -14,11 +14,10 @@ export class AccountsService {
     private liabilityRepository: Repository<Liability>
   ) {}
 
-  async findAllItems(userId: string) {
+  async findAllItems() {
     const items = await this.itemRepository
       .createQueryBuilder("item")
       .leftJoinAndSelect("item.accounts", "account")
-      .where("item.userId = :userId", { userId })
       .orderBy("item.createdAt", "DESC")
       .getMany()
 
@@ -41,11 +40,10 @@ export class AccountsService {
     }))
   }
 
-  async findAllAccounts(userId: string) {
+  async findAllAccounts() {
     const accounts = await this.accountRepository
       .createQueryBuilder("account")
       .leftJoinAndSelect("account.item", "item")
-      .where("item.userId = :userId", { userId })
       .orderBy("item.institutionName", "ASC")
       .addOrderBy("account.name", "ASC")
       .getMany()
@@ -67,13 +65,12 @@ export class AccountsService {
     }))
   }
 
-  async findAllLiabilities(userId: string) {
+  async findAllLiabilities() {
     const liabilities = await this.liabilityRepository
       .createQueryBuilder("liability")
       .leftJoinAndSelect("liability.account", "account")
       .leftJoin("account.item", "item")
       .addSelect(["item.institutionName"])
-      .where("item.userId = :userId", { userId })
       .orderBy("account.currentBalance", "DESC")
       .getMany()
 
@@ -92,13 +89,10 @@ export class AccountsService {
     }))
   }
 
-  async updateAccountName(accountId: string, name: string, userId: string) {
-    const account = await this.accountRepository
-      .createQueryBuilder("account")
-      .leftJoin("account.item", "item")
-      .where("account.id = :accountId", { accountId })
-      .andWhere("item.userId = :userId", { userId })
-      .getOne()
+  async updateAccountName(accountId: string, name: string) {
+    const account = await this.accountRepository.findOne({
+      where: { id: accountId }
+    })
 
     if (!account) {
       return null

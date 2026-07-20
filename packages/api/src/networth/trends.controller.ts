@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Request } from "@nestjs/common"
+import { Controller, Get, Query } from "@nestjs/common"
 import { NetworthService } from "./networth.service"
 
 @Controller("trends")
@@ -9,14 +9,12 @@ export class TrendsController {
   async getCompositionTrends(
     @Query("days") days?: string,
     @Query("start_date") startDate?: string,
-    @Query("end_date") endDate?: string,
-    @Request() req?: any
+    @Query("end_date") endDate?: string
   ) {
     return this.networthService.getCompositionTrends({
       days: days ? parseInt(days) : undefined,
       startDate,
-      endDate,
-      userId: req.user.id
+      endDate
     })
   }
 
@@ -25,15 +23,13 @@ export class TrendsController {
     @Query("account_id") accountId?: string,
     @Query("days") days?: string,
     @Query("start_date") startDate?: string,
-    @Query("end_date") endDate?: string,
-    @Request() req?: any
+    @Query("end_date") endDate?: string
   ) {
     return this.networthService.getAccountTrends({
       accountId,
       days: days ? parseInt(days) : undefined,
       startDate,
-      endDate,
-      userId: req.user.id
+      endDate
     })
   }
 }

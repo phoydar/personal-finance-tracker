@@ -9,13 +9,15 @@ import { NetworthModule } from "./networth/networth.module"
 import { AuthModule } from "./auth/auth.module"
 import { JwtAuthGuard } from "./auth/jwt-auth.guard"
 import { HealthController } from "./health.controller"
+import { validateAuthConfig } from "./auth/auth.config"
 
 @Module({
   imports: [
     // Environment configuration
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: [".env.local", ".env"]
+      envFilePath: [".env.local", ".env"],
+      validate: validateAuthConfig
     }),
 
     // Database configuration

@@ -4,7 +4,6 @@ import {
   Patch,
   Param,
   Body,
-  Request,
   HttpException,
   HttpStatus
 } from "@nestjs/common"
@@ -22,27 +21,26 @@ export class AccountsController {
   constructor(private readonly accountsService: AccountsService) {}
 
   @Get("items")
-  async findAllItems(@Request() req: any) {
-    return this.accountsService.findAllItems(req.user.id)
+  async findAllItems() {
+    return this.accountsService.findAllItems()
   }
 
   @Get("accounts")
-  async findAllAccounts(@Request() req: any) {
-    return this.accountsService.findAllAccounts(req.user.id)
+  async findAllAccounts() {
+    return this.accountsService.findAllAccounts()
   }
 
   @Get("liabilities")
-  async findAllLiabilities(@Request() req: any) {
-    return this.accountsService.findAllLiabilities(req.user.id)
+  async findAllLiabilities() {
+    return this.accountsService.findAllLiabilities()
   }
 
   @Patch("accounts/:id")
   async updateAccountName(
     @Param("id") id: string,
-    @Body() body: UpdateAccountNameDto,
-    @Request() req: any
+    @Body() body: UpdateAccountNameDto
   ) {
-    const result = await this.accountsService.updateAccountName(id, body.name, req.user.id)
+    const result = await this.accountsService.updateAccountName(id, body.name)
 
     if (!result) {
       throw new HttpException("Account not found", HttpStatus.NOT_FOUND)

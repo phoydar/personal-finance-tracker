@@ -39,6 +39,6 @@ export class AuthController {
 
   @Get("me")
   async getProfile(@Request() req: any) {
-    return this.authService.getProfile(req.user.id)
+    return req.user
   }
 }

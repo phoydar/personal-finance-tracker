@@ -5,7 +5,6 @@ import {
   Delete,
   Body,
   Param,
-  Request,
   HttpException,
   HttpStatus
 } from "@nestjs/common"
@@ -56,7 +55,7 @@ export class PlaidController {
   }
 
   @Post("exchange_public_token")
-  async exchangePublicToken(@Body() body: ExchangeTokenDto, @Request() req: any) {
+  async exchangePublicToken(@Body() body: ExchangeTokenDto) {
     console.log(
       "exchange_public_token received raw body:",
       JSON.stringify(body)
@@ -79,8 +78,7 @@ export class PlaidController {
     try {
       const result = await this.plaidService.exchangePublicToken(
         body.public_token,
-        body.institution,
-        req.user.id
+        body.institution
       )
       return { success: true, ...result }
     } catch (error: any) {
@@ -96,9 +94,9 @@ export class PlaidController {
   }
 
   @Post("sync")
-  async syncTransactions(@Request() req: any) {
+  async syncTransactions() {
     try {
-      const result = await this.plaidService.syncTransactions(req.user.id)
+      const result = await this.plaidService.syncTransactions()
       return { success: true, ...result }
     } catch (error: any) {
       throw new HttpException(
@@ -109,9 +107,9 @@ export class PlaidController {
   }
 
   @Post("refresh_balances")
-  async refreshBalances(@Request() req: any) {
+  async refreshBalances() {
     try {
-      await this.plaidService.refreshBalances(req.user.id)
+      await this.plaidService.refreshBalances()
       return { success: true }
     } catch (error: any) {
       throw new HttpException(
@@ -122,9 +120,9 @@ export class PlaidController {
   }
 
   @Post("sync_liabilities")
-  async syncLiabilities(@Request() req: any) {
+  async syncLiabilities() {
     try {
-      await this.plaidService.syncLiabilities(req.user.id)
+      await this.plaidService.syncLiabilities()
       return { success: true }
     } catch (error: any) {
       throw new HttpException(
@@ -135,9 +133,9 @@ export class PlaidController {
   }
 
   @Delete("items/:id")
-  async removeItem(@Param("id") id: string, @Request() req: any) {
+  async removeItem(@Param("id") id: string) {
     try {
-      await this.plaidService.removeItem(id, req.user.id)
+      await this.plaidService.removeItem(id)
       return { success: true }
     } catch (error: any) {
       throw new HttpException(
