@@ -18,22 +18,34 @@ export class NetworthService {
     private accountBalanceSnapshotRepository: Repository<AccountBalanceSnapshot>
   ) {}
 
-  async calculateNetWorth() {
+  async calculateNetWorth(userId?: string) {
     // Get total assets (positive balance accounts)
-    const assetsResult = await this.accountRepository
+    const assetsQuery = this.accountRepository
       .createQueryBuilder("account")
+      .leftJoin("account.item", "item")
       .select("COALESCE(SUM(account.currentBalance), 0)", "total")
       .where("account.type IN (:...types)", {
         types: ["depository", "investment", "brokerage"]
       })
-      .getRawOne()
+
+    if (userId) {
+      assetsQuery.andWhere("item.userId = :userId", { userId })
+    }
+
+    const assetsResult = await assetsQuery.getRawOne()
 
     // Get total liabilities (credit cards, loans)
-    const liabilitiesResult = await this.accountRepository
+    const liabilitiesQuery = this.accountRepository
       .createQueryBuilder("account")
+      .leftJoin("account.item", "item")
       .select("COALESCE(SUM(ABS(account.currentBalance)), 0)", "total")
       .where("account.type IN (:...types)", { types: ["credit", "loan"] })
-      .getRawOne()
+
+    if (userId) {
+      liabilitiesQuery.andWhere("item.userId = :userId", { userId })
+    }
+
+    const liabilitiesResult = await liabilitiesQuery.getRawOne()
 
     const totalAssets = parseFloat(assetsResult?.total) || 0
     const totalLiabilities = parseFloat(liabilitiesResult?.total) || 0
@@ -46,9 +58,9 @@ export class NetworthService {
     }
   }
 
-  async saveSnapshot() {
+  async saveSnapshot(userId?: string) {
     const { total_assets, total_liabilities, net_worth } =
-      await this.calculateNetWorth()
+      await this.calculateNetWorth(userId)
 
     const snapshot = this.snapshotRepository.create({
       totalAssets: total_assets,
@@ -60,9 +72,15 @@ export class NetworthService {
     const savedSnapshot = await this.snapshotRepository.save(snapshot)
 
     // Save individual account balances
-    const accounts = await this.accountRepository.find({
-      relations: ["item"]
-    })
+    const accountsQuery = this.accountRepository
+      .createQueryBuilder("account")
+      .leftJoinAndSelect("account.item", "item")
+
+    if (userId) {
+      accountsQuery.where("item.userId = :userId", { userId })
+    }
+
+    const accounts = await accountsQuery.getMany()
 
     const accountBalanceSnapshots = accounts.map((account) =>
       this.accountBalanceSnapshotRepository.create({
@@ -81,7 +99,7 @@ export class NetworthService {
     return { success: true }
   }
 
-  async getHistory(days: number = 90) {
+  async getHistory(days: number = 90, userId?: string) {
     const startDate = new Date()
     startDate.setDate(startDate.getDate() - days)
 
@@ -107,6 +125,7 @@ export class NetworthService {
       days?: number
       startDate?: string
       endDate?: string
+      userId?: string
     } = {}
   ) {
     const { days, startDate, endDate } = options
@@ -182,9 +201,10 @@ export class NetworthService {
       days?: number
       startDate?: string
       endDate?: string
+      userId?: string
     } = {}
   ) {
-    const { accountId, days, startDate, endDate } = options
+    const { accountId, days, startDate, endDate, userId } = options
 
     // Build query for snapshots within date range
     let snapshotWhereCondition: any = {}
@@ -225,8 +245,14 @@ export class NetworthService {
     let query = this.accountBalanceSnapshotRepository
       .createQueryBuilder("abs")
       .innerJoin("net_worth_history", "nwh", "abs.snapshot_id = nwh.id")
+      .innerJoin("accounts", "account", "abs.account_id = account.id")
+      .innerJoin("items", "item", "account.item_id = item.id")
       .where("abs.snapshot_id IN (:...snapshotIds)", { snapshotIds })
       .orderBy("nwh.snapshot_date", "ASC")
+
+    if (userId) {
+      query = query.andWhere("item.user_id = :userId", { userId })
+    }
 
     if (accountId) {
       query = query.andWhere("abs.account_id = :accountId", { accountId })

@@ -20,7 +20,7 @@ export class TransactionsService {
     private transactionRepository: Repository<Transaction>
   ) {}
 
-  async findAll(filters: TransactionFilters) {
+  async findAll(filters: TransactionFilters, userId: string) {
     const {
       account_id,
       start_date,
@@ -36,6 +36,7 @@ export class TransactionsService {
       .leftJoinAndSelect("transaction.account", "account")
       .leftJoin("account.item", "item")
       .addSelect(["item.institutionName"])
+      .where("item.userId = :userId", { userId })
 
     if (account_id) {
       queryBuilder.andWhere("transaction.accountId = :account_id", {
@@ -94,18 +95,21 @@ export class TransactionsService {
     }
   }
 
-  async getSpendingByCategory(filters: {
-    start_date?: string
-    end_date?: string
-  }) {
+  async getSpendingByCategory(
+    filters: { start_date?: string; end_date?: string },
+    userId: string
+  ) {
     const { start_date, end_date } = filters
 
     const queryBuilder = this.transactionRepository
       .createQueryBuilder("transaction")
+      .leftJoin("transaction.account", "account")
+      .leftJoin("account.item", "item")
       .select("transaction.category", "category")
       .addSelect("SUM(transaction.amount)", "total")
       .where("transaction.amount > 0")
       .andWhere("transaction.pending = false")
+      .andWhere("item.userId = :userId", { userId })
 
     if (start_date) {
       queryBuilder.andWhere("transaction.date >= :start_date", { start_date })
@@ -126,14 +130,19 @@ export class TransactionsService {
     }))
   }
 
-  async getIncome(filters: { start_date?: string; end_date?: string }) {
+  async getIncome(
+    filters: { start_date?: string; end_date?: string },
+    userId: string
+  ) {
     const { start_date, end_date } = filters
 
     const queryBuilder = this.transactionRepository
       .createQueryBuilder("transaction")
       .leftJoinAndSelect("transaction.account", "account")
+      .leftJoin("account.item", "item")
       .where("transaction.amount < 0")
       .andWhere("transaction.pending = false")
+      .andWhere("item.userId = :userId", { userId })
 
     if (start_date) {
       queryBuilder.andWhere("transaction.date >= :start_date", { start_date })

@@ -7,14 +7,26 @@ const API_BASE = process.env.REACT_APP_API_URL || '';
 async function apiRequest(endpoint, options = {}) {
   // All endpoints are under /api prefix
   const url = `${API_BASE}/api${endpoint}`;
+
+  // Attach JWT token from localStorage
+  const token = localStorage.getItem('auth_token');
+  const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
   
   const response = await fetch(url, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      ...authHeaders,
       ...options.headers,
     },
   });
+
+  // Handle 401 by clearing auth state and reloading
+  if (response.status === 401) {
+    localStorage.removeItem('auth_token');
+    window.location.reload();
+    throw new Error('Session expired. Please sign in again.');
+  }
   
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: 'Request failed' }));

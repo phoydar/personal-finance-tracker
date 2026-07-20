@@ -3,9 +3,12 @@ import {
   PrimaryColumn,
   Column,
   CreateDateColumn,
-  OneToMany
+  OneToMany,
+  ManyToOne,
+  JoinColumn
 } from "typeorm"
 import { Account } from "./account.entity"
+import { User } from "./user.entity"
 
 @Entity("items")
 export class Item {
@@ -34,8 +37,15 @@ export class Item {
   @Column({ type: "text", nullable: true })
   cursor: string | null
 
+  @Column({ type: "uuid", nullable: true, name: "user_id" })
+  userId: string | null
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date
+
+  @ManyToOne(() => User, (user) => user.items, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "user_id" })
+  user: User
 
   @OneToMany(() => Account, (account) => account.item)
   accounts: Account[]

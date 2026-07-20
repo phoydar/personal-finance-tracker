@@ -82,7 +82,8 @@ export class PlaidService {
 
   async exchangePublicToken(
     publicToken: string,
-    institution?: { institution_id?: string; name?: string }
+    institution?: { institution_id?: string; name?: string },
+    userId?: string
   ): Promise<{ item_id: string }> {
     if (!publicToken || publicToken.trim() === "") {
       throw new Error("public_token is required and cannot be empty")
@@ -105,7 +106,8 @@ export class PlaidService {
       id: itemId,
       accessToken,
       institutionId: institution?.institution_id || null,
-      institutionName: institution?.name || null
+      institutionName: institution?.name || null,
+      userId: userId || null
     })
     await this.itemRepository.save(item)
 
@@ -141,12 +143,14 @@ export class PlaidService {
     }
   }
 
-  async syncTransactions(): Promise<{
+  async syncTransactions(userId?: string): Promise<{
     added: number
     modified: number
     removed: number
   }> {
-    const items = await this.itemRepository.find()
+    const items = await this.itemRepository.find({
+      where: userId ? { userId } : undefined
+    })
     let totalAdded = 0
     let totalModified = 0
     let totalRemoved = 0
@@ -238,8 +242,10 @@ export class PlaidService {
     return { added, modified, removed }
   }
 
-  async refreshBalances(): Promise<void> {
-    const items = await this.itemRepository.find()
+  async refreshBalances(userId?: string): Promise<void> {
+    const items = await this.itemRepository.find({
+      where: userId ? { userId } : undefined
+    })
 
     for (const item of items) {
       try {
@@ -263,8 +269,10 @@ export class PlaidService {
     }
   }
 
-  async syncLiabilities(): Promise<void> {
-    const items = await this.itemRepository.find()
+  async syncLiabilities(userId?: string): Promise<void> {
+    const items = await this.itemRepository.find({
+      where: userId ? { userId } : undefined
+    })
 
     for (const item of items) {
       try {
@@ -338,8 +346,10 @@ export class PlaidService {
     }
   }
 
-  async removeItem(itemId: string): Promise<void> {
-    const item = await this.itemRepository.findOne({ where: { id: itemId } })
+  async removeItem(itemId: string, userId?: string): Promise<void> {
+    const where: any = { id: itemId }
+    if (userId) where.userId = userId
+    const item = await this.itemRepository.findOne({ where })
 
     if (item) {
       try {

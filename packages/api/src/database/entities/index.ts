@@ -1,3 +1,4 @@
+export * from "./user.entity"
 export * from "./item.entity"
 export * from "./account.entity"
 export * from "./transaction.entity"

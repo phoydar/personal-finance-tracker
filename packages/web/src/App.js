@@ -1,12 +1,28 @@
 import React from 'react';
 import { Routes, Route, NavLink } from 'react-router-dom';
+import { useAuth } from './context/AuthContext';
 import Dashboard from './pages/Dashboard';
 import Accounts from './pages/Accounts';
 import Transactions from './pages/Transactions';
 import NetWorth from './pages/NetWorth';
 import Trends from './pages/Trends';
+import Login from './pages/Login';
 
 function App() {
+  const { isAuthenticated, loading, user, logout } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="login-page">
+        <div className="login-loading">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Login />;
+  }
+
   return (
     <div className="app">
       <aside className="sidebar">
@@ -62,6 +78,25 @@ function App() {
             </li>
           </ul>
         </nav>
+
+        <div className="sidebar-user">
+          <div className="sidebar-user-info">
+            {user?.picture && (
+              <img src={user.picture} alt="" className="sidebar-user-avatar" referrerPolicy="no-referrer" />
+            )}
+            <div className="sidebar-user-details">
+              <span className="sidebar-user-name">{user?.name || user?.email}</span>
+            </div>
+          </div>
+          <button className="btn btn-sm btn-secondary sidebar-logout" onClick={logout}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+            Sign out
+          </button>
+        </div>
       </aside>
       
       <main className="main-content">
