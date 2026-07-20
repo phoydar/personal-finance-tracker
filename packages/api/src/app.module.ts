@@ -6,6 +6,7 @@ import { AccountsModule } from "./accounts/accounts.module"
 import { TransactionsModule } from "./transactions/transactions.module"
 import { NetworthModule } from "./networth/networth.module"
 import { HealthController } from "./health.controller"
+import { WebModule } from "./web.module"
 
 @Module({
   imports: [
@@ -40,7 +41,8 @@ import { HealthController } from "./health.controller"
     PlaidModule,
     AccountsModule,
     TransactionsModule,
-    NetworthModule
+    NetworthModule,
+    WebModule
   ],
   controllers: [HealthController]
 })
