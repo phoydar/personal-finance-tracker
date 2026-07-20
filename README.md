@@ -47,7 +47,7 @@ Until cutover, Netlify serves the React build and proxies `/api/*` to the existi
 
 ## Prerequisites
 
-- Node.js 18 or newer (Railway and Netlify use Node.js 20)
+- Node.js 18 or newer (CI and the transitional Netlify build use Node.js 20)
 - Docker for local PostgreSQL
 - [Plaid API credentials](https://dashboard.plaid.com/team/keys)
 
@@ -74,11 +74,14 @@ Until cutover, Netlify serves the React build and proxies `/api/*` to the existi
    PLAID_ENV=sandbox
    PLAID_REDIRECT_URI=http://localhost:3000/
    FRONTEND_URL=http://localhost:3000
+   GOOGLE_CLIENT_ID=your_google_client_id
+   ALLOWED_GOOGLE_EMAILS=you@example.com
+   JWT_SECRET=replace_with_a_random_value_of_at_least_32_characters
    PORT=3001
    NODE_ENV=development
    ```
 
-4. Leave `REACT_APP_API_URL` unset. The React development server proxies `/api` to `http://localhost:3001`.
+4. Copy `packages/web/.env.example` to `packages/web/.env`, set `REACT_APP_GOOGLE_CLIENT_ID` to the same Google OAuth client ID, and leave `REACT_APP_API_URL` unset. The React development server proxies `/api` to `http://localhost:3001`.
 
 5. Start both development servers:
 
@@ -105,19 +108,15 @@ Keep PostgreSQL as a separate Railway service and reference its connection varia
 | `PLAID_SECRET` | Plaid secret for the selected environment |
 | `PLAID_ENV` | Plaid environment, normally `production` after cutover |
 | `PLAID_REDIRECT_URI` | Public Railway application URL, including the expected trailing slash |
+| `GOOGLE_CLIENT_ID` | Expected Google token audience at API runtime |
+| `REACT_APP_GOOGLE_CLIENT_ID` | Google client ID compiled into the React build |
+| `ALLOWED_GOOGLE_EMAILS` | Comma-separated Google accounts permitted to sign in |
+| `JWT_SECRET` | Cryptographically random signing secret of at least 32 characters |
 | `NODE_ENV` | Set to `production` |
 
 Railway supplies `PORT`; do not hard-code it. `FRONTEND_URL` and `REACT_APP_API_URL` are not required for the same-origin production deployment.
 
-When Google authentication is merged, the combined Railway build/runtime also requires:
-
-| Variable | Scope | Purpose |
-| --- | --- | --- |
-| `GOOGLE_CLIENT_ID` | API runtime | Expected Google token audience |
-| `REACT_APP_GOOGLE_CLIENT_ID` | Web build | Google Identity Services client ID compiled into React |
-| `JWT_SECRET` | API runtime | Strong, randomly generated signing secret |
-
-`GOOGLE_CLIENT_SECRET` is not required by the browser-issued ID-token flow currently proposed for this application. Never expose secrets through a `REACT_APP_*` variable.
+`GOOGLE_CLIENT_SECRET` is not required by this browser-issued ID-token flow. Never expose secrets through a `REACT_APP_*` variable. Because Create React App embeds `REACT_APP_GOOGLE_CLIENT_ID` during the build, redeploy after changing it.
 
 ## Staging and OAuth
 
@@ -127,7 +126,7 @@ For staging:
 
 1. Add the staging Railway origin, for example `https://staging.example.up.railway.app`, to the Google OAuth client's **Authorized JavaScript origins**.
 2. Set both `GOOGLE_CLIENT_ID` and `REACT_APP_GOOGLE_CLIENT_ID` to that client ID in the staging Railway environment.
-3. Set a staging-only `JWT_SECRET`.
+3. Set a staging-only `JWT_SECRET` and the intended `ALLOWED_GOOGLE_EMAILS`.
 4. Add the staging URL to Plaid's allowed redirect URIs and set `PLAID_REDIRECT_URI` to the exact value.
 5. Redeploy after changing any `REACT_APP_*` variable because Create React App embeds those values at build time.
 
@@ -142,7 +141,7 @@ The hosting change should be released deliberately; merging this code does not m
 1. Point the Railway application service at the repository root and confirm it uses the root `railway.toml`.
 2. Connect the existing Railway PostgreSQL service through a `DATABASE_URL` reference. Do not create or migrate to a second production database.
 3. Configure the required variables in a persistent staging environment and deploy there first.
-4. Verify `/`, a direct client-route refresh, static assets, `/api/health`, an unknown `/api/*` JSON 404, Plaid Link, sync, and authentication when present.
+4. Verify `/`, a direct client-route refresh, static assets, `/api/health`, an unknown `/api/*` JSON 404, Google sign-in, allowlist rejection, Plaid Link, and sync.
 5. Configure the production Railway domain in Plaid and Google before directing users to it.
 6. Deploy the combined service to production and repeat the smoke tests.
 7. Keep the Netlify site available until the Railway deployment has been stable and data operations have been verified.
@@ -169,6 +168,7 @@ personal-finance-tracker/
     ├── api/
     │   ├── src/
     │   │   ├── accounts/
+    │   │   ├── auth/
     │   │   ├── database/
     │   │   ├── networth/
     │   │   ├── plaid/
@@ -200,9 +200,13 @@ GitHub Actions runs a clean `npm ci` install and builds both npm workspaces for 
 
 ## API endpoints
 
+Google login and the health check are public. All finance endpoints and `/api/auth/me` require the JWT returned by `/api/auth/google`.
+
 | Endpoint | Method | Description |
 | --- | --- | --- |
 | `/api/health` | GET | Health check |
+| `/api/auth/google` | POST | Exchange an allowlisted Google ID token for a JWT |
+| `/api/auth/me` | GET | Get the authenticated identity |
 | `/api/create_link_token` | GET | Create a Plaid Link token |
 | `/api/exchange_public_token` | POST | Exchange a Plaid public token |
 | `/api/items` | GET | List linked institutions |
