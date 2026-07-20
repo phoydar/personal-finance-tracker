@@ -8,6 +8,9 @@
 [build.environment]
   NPM_FLAGS = "--prefix=."
   NODE_VERSION = "20"
+  # Google OAuth client IDs are public identifiers compiled into the React app.
+  # Keep secret scanning enabled for every other variable, including secrets.
+  SECRETS_SCAN_OMIT_KEYS = "GOOGLE_CLIENT_ID,REACT_APP_GOOGLE_CLIENT_ID"
 
 # Proxy API requests to Railway backend (avoids CORS issues)
 [[redirects]]

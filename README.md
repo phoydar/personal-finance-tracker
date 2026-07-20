@@ -45,6 +45,10 @@ The SPA fallback explicitly excludes `/api/*`. A browser refresh on a client rou
 
 Until cutover, Netlify serves the React build and proxies `/api/*` to the existing Railway API. This transitional path is defined in `netlify.toml` and can also be used for rollback.
 
+The transitional Netlify build needs only `REACT_APP_GOOGLE_CLIENT_ID` for Google authentication. Leave `REACT_APP_API_URL` unset so `/api/*` uses the configured proxy. Remove `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` from Netlify: the backend client ID belongs in Railway, and this authentication flow does not use a client secret.
+
+The Google client ID is intentionally public and compiled into the React bundle. `netlify.toml` excludes only `GOOGLE_CLIENT_ID` and `REACT_APP_GOOGLE_CLIENT_ID` from Netlify's secret scan so that expected build output is accepted; secret scanning remains enabled for every other variable, including `GOOGLE_CLIENT_SECRET`.
+
 ## Prerequisites
 
 - Node.js 18 or newer (CI and the transitional Netlify build use Node.js 20)
