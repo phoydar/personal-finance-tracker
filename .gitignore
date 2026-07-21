@@ -39,3 +39,6 @@ localhost-key.pem
 
 # Package locks (API uses root lock, web has its own for Netlify)
 packages/api/package-lock.json
+
+# Agents
+AGENTS.md
