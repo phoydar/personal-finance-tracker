@@ -1,7 +1,6 @@
 [build]
 builder = "RAILPACK"
 buildCommand = "npm run build"
-watchPatterns = ["/**"]
 
 [deploy]
 startCommand = "npm start"
