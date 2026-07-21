@@ -1,0 +1,18 @@
+[deploy]
+startCommand = "npm start"
+healthcheckPath = "/api/health"
+healthcheckTimeout = 100
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
+
+# Environment variables (set in Railway dashboard)
+# DATABASE_URL = (auto-provisioned by Railway PostgreSQL)
+# PLAID_CLIENT_ID = xxx
+# PLAID_SECRET = xxx
+# PLAID_ENV = production
+# PLAID_REDIRECT_URI = https://your-app.up.railway.app/
+# GOOGLE_CLIENT_ID = xxx
+# REACT_APP_GOOGLE_CLIENT_ID = xxx
+# ALLOWED_GOOGLE_EMAILS = owner@example.com
+# JWT_SECRET = xxx (at least 32 random characters)
+# NODE_ENV = production
