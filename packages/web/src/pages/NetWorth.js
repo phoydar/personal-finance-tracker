@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Camera, TrendDown, TrendUp } from '@phosphor-icons/react';
+import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import api from '../api';
 
 function NetWorth() {
@@ -8,293 +9,157 @@ function NetWorth() {
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [snapshotSaving, setSnapshotSaving] = useState(false);
+  const [notice, setNotice] = useState(null);
 
   const fetchData = useCallback(async () => {
     try {
-      const [networthData, historyData, accountsData] = await Promise.all([
-        api.getNetWorth(),
-        api.getNetWorthHistory(365),
-        api.getAccounts(),
+      const [netWorthData, historyData, accountsData] = await Promise.all([
+        api.getNetWorth(), api.getNetWorthHistory(365), api.getAccounts(),
       ]);
-
-      setNetWorth(networthData);
-      setHistory(historyData);
-      setAccounts(accountsData);
+      setNetWorth(netWorthData);
+      setHistory(historyData || []);
+      setAccounts(accountsData || []);
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error('Error fetching net worth data:', error);
+      setNotice({ type: 'error', text: 'Your net worth data could not be loaded.' });
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const handleSaveSnapshot = async () => {
     setSnapshotSaving(true);
+    setNotice(null);
     try {
       await api.saveNetWorthSnapshot();
       await fetchData();
+      setNotice({ type: 'success', text: 'Today’s net worth snapshot was saved.' });
     } catch (error) {
       console.error('Error saving snapshot:', error);
+      setNotice({ type: 'error', text: 'The snapshot could not be saved. Please try again.' });
     } finally {
       setSnapshotSaving(false);
     }
   };
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
+  const currency = (amount, digits = 0) => new Intl.NumberFormat('en-US', {
+    style: 'currency', currency: 'USD', minimumFractionDigits: digits, maximumFractionDigits: digits,
+  }).format(Number(amount) || 0);
 
-  const formatCurrencyFull = (amount) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
-  };
+  const assets = accounts.filter((account) => ['depository', 'investment', 'brokerage'].includes(account.type));
+  const liabilities = accounts.filter((account) => ['credit', 'loan'].includes(account.type));
+  const chartData = useMemo(() => [...history]
+    .sort((a, b) => new Date(a.snapshot_date) - new Date(b.snapshot_date))
+    .map((entry) => ({
+      date: new Date(entry.snapshot_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      fullDate: new Date(entry.snapshot_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+      netWorth: Number(entry.net_worth),
+      assets: Number(entry.total_assets),
+      liabilities: Number(entry.total_liabilities),
+    })), [history]);
 
-  // Group accounts by type
-  const assets = accounts.filter(a => ['depository', 'investment', 'brokerage'].includes(a.type));
-  const liabilities = accounts.filter(a => ['credit', 'loan'].includes(a.type));
+  if (loading) return <div className="page-skeleton" aria-label="Loading net worth"><span /><span /><span /></div>;
 
-  // Prepare chart data
-  const chartData = history.map(h => ({
-    date: new Date(h.snapshot_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-    netWorth: parseFloat(h.net_worth),
-    assets: parseFloat(h.total_assets),
-    liabilities: parseFloat(h.total_liabilities),
-  }));
-
-  if (loading) {
-    return <div className="loading">Loading...</div>;
-  }
+  const firstValue = chartData[0]?.netWorth;
+  const latestValue = chartData[chartData.length - 1]?.netWorth;
+  const change = firstValue != null && latestValue != null ? latestValue - firstValue : null;
 
   return (
-    <div>
-      <div className="page-header">
-        <h1>Net Worth</h1>
-        <button 
-          className="btn btn-primary" 
-          onClick={handleSaveSnapshot}
-          disabled={snapshotSaving}
-        >
-          {snapshotSaving ? 'Saving...' : 'Save Snapshot'}
+    <div className="page-stack">
+      <header className="page-header">
+        <div>
+          <p className="eyebrow">Financial position</p>
+          <h1>Net worth</h1>
+          <p>Track the relationship between what you own and what you owe.</p>
+        </div>
+        <button className="btn btn-primary" onClick={handleSaveSnapshot} disabled={snapshotSaving}>
+          <Camera size={17} aria-hidden="true" />
+          {snapshotSaving ? 'Saving…' : 'Save snapshot'}
         </button>
-      </div>
+      </header>
 
-      {/* Net Worth Summary */}
-      <div className="networth-summary">
-        <div className="card networth-card">
-          <div className="stat-label">Total Assets</div>
-          <div className="stat-value positive">{formatCurrency(netWorth.total_assets)}</div>
-        </div>
-        <div className="card networth-card">
-          <div className="stat-label">Net Worth</div>
-          <div className={`stat-value ${netWorth.net_worth >= 0 ? 'positive' : 'negative'}`}>
-            {formatCurrency(netWorth.net_worth)}
-          </div>
-        </div>
-        <div className="card networth-card">
-          <div className="stat-label">Total Liabilities</div>
-          <div className="stat-value negative">{formatCurrency(netWorth.total_liabilities)}</div>
-        </div>
-      </div>
+      {notice && <div className={`inline-notice inline-notice-${notice.type}`} role={notice.type === 'error' ? 'alert' : 'status'}>{notice.text}</div>}
 
-      {/* Net Worth History Chart */}
-      <div className="card" style={{ marginBottom: '32px' }}>
-        <div className="card-header">
-          <span className="card-title">Net Worth Over Time</span>
+      <section className="panel networth-history-panel" aria-labelledby="networth-history-heading">
+        <div className="networth-focal">
+          <span>Current net worth</span>
+          <strong>{currency(netWorth.net_worth)}</strong>
+          {change == null ? (
+            <p>Save snapshots to measure your progress.</p>
+          ) : (
+            <p className={change >= 0 ? 'positive' : 'negative'}>
+              {change >= 0 ? <TrendUp size={16} aria-hidden="true" /> : <TrendDown size={16} aria-hidden="true" />}
+              {change >= 0 ? '+' : '−'}{currency(Math.abs(change))} in this period
+            </p>
+          )}
         </div>
-        {chartData.length === 0 ? (
-          <div className="empty-state">
-            <h3>No history yet</h3>
-            <p>Click "Save Snapshot" to start tracking your net worth over time</p>
-          </div>
+        <div className="chart-title-row">
+          <div><h2 id="networth-history-heading">Your financial position</h2><p>Assets, liabilities, and net worth over time</p></div>
+        </div>
+        {chartData.length < 2 ? (
+          <div className="chart-empty">Save at least two snapshots to build your net worth chart.</div>
         ) : (
-          <div className="chart-container">
+          <div className="large-chart" role="img" aria-label="Net worth, asset, and liability history">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-                <XAxis dataKey="date" stroke="var(--text-secondary)" fontSize={12} />
-                <YAxis 
-                  stroke="var(--text-secondary)" 
-                  fontSize={12}
-                  tickFormatter={(value) => formatCurrency(value)}
-                />
-                <Tooltip
-                  contentStyle={{ 
-                    background: 'var(--bg-card)', 
-                    border: '1px solid var(--border-color)',
-                    borderRadius: '8px',
-                  }}
-                  formatter={(value) => formatCurrencyFull(value)}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="netWorth" 
-                  name="Net Worth"
-                  stroke="var(--accent-green)" 
-                  strokeWidth={3}
-                  dot={false}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="assets" 
-                  name="Assets"
-                  stroke="var(--accent-blue)" 
-                  strokeWidth={2}
-                  dot={false}
-                  strokeDasharray="5 5"
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="liabilities" 
-                  name="Liabilities"
-                  stroke="var(--accent-red)" 
-                  strokeWidth={2}
-                  dot={false}
-                  strokeDasharray="5 5"
-                />
+              <LineChart data={chartData} margin={{ top: 12, right: 16, left: 4, bottom: 0 }}>
+                <CartesianGrid vertical={false} stroke="var(--border)" />
+                <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)', fontSize: 11 }} />
+                <YAxis axisLine={false} tickLine={false} width={72} tick={{ fill: 'var(--text-muted)', fontSize: 11 }} tickFormatter={(value) => currency(value)} />
+                <Tooltip labelFormatter={(_, payload) => payload?.[0]?.payload?.fullDate} formatter={(value, name) => [currency(value), name]} contentStyle={{ borderColor: 'var(--border)', borderRadius: 8, fontSize: 12 }} />
+                <Legend iconType="plainline" wrapperStyle={{ fontSize: 12, color: 'var(--text-secondary)' }} />
+                <Line type="monotone" dataKey="netWorth" name="Net worth" stroke="var(--chart-1)" strokeWidth={2.5} dot={false} />
+                <Line type="monotone" dataKey="assets" name="Assets" stroke="var(--chart-2)" strokeWidth={1.75} dot={false} />
+                <Line type="monotone" dataKey="liabilities" name="Liabilities" stroke="var(--negative)" strokeWidth={1.75} strokeDasharray="5 4" dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>
         )}
+      </section>
+
+      <div className="balance-breakdown-grid">
+        <BalancePanel title="Assets" total={netWorth.total_assets} accounts={assets} tone="positive" currency={currency} />
+        <BalancePanel title="Liabilities" total={netWorth.total_liabilities} accounts={liabilities} tone="negative" currency={currency} />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-        {/* Assets Breakdown */}
-        <div className="card">
-          <div className="card-header">
-            <span className="card-title">Assets</span>
-            <span style={{ color: 'var(--accent-green)', fontWeight: 600 }}>
-              {formatCurrency(netWorth.total_assets)}
-            </span>
+      {chartData.length > 0 && (
+        <section className="panel snapshot-panel">
+          <div className="panel-header"><div><h2>Snapshot history</h2><span>Your most recent saved positions</span></div></div>
+          <div className="table-container">
+            <table className="snapshot-table">
+              <thead><tr><th>Date</th><th>Assets</th><th>Liabilities</th><th>Net worth</th></tr></thead>
+              <tbody>
+                {[...chartData].reverse().slice(0, 12).map((entry) => (
+                  <tr key={entry.fullDate}><td>{entry.fullDate}</td><td>{currency(entry.assets)}</td><td>{currency(entry.liabilities)}</td><td><strong>{currency(entry.netWorth)}</strong></td></tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-          {assets.length === 0 ? (
-            <div className="empty-state">
-              <p>No asset accounts linked</p>
-            </div>
-          ) : (
-            <>
-              <div style={{ height: '200px', marginBottom: '16px' }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={assets} layout="vertical" margin={{ left: 100 }}>
-                    <XAxis type="number" hide />
-                    <YAxis 
-                      type="category" 
-                      dataKey="name" 
-                      stroke="var(--text-secondary)"
-                      fontSize={12}
-                      width={100}
-                    />
-                    <Tooltip
-                      contentStyle={{ 
-                        background: 'var(--bg-card)', 
-                        border: '1px solid var(--border-color)',
-                      }}
-                      formatter={(value) => formatCurrencyFull(value)}
-                    />
-                    <Bar dataKey="current_balance" name="Balance">
-                      {assets.map((entry, index) => (
-                        <Cell key={entry.id} fill={`hsl(${160 + index * 20}, 70%, 50%)`} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="table-container">
-                <table>
-                  <tbody>
-                    {assets.map((account) => (
-                      <tr key={account.id}>
-                        <td>
-                          <div style={{ fontWeight: 500 }}>{account.name}</div>
-                          <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{account.institution_name}</div>
-                        </td>
-                        <td style={{ textAlign: 'right' }}>
-                          <span className="transaction-amount income">
-                            {formatCurrencyFull(account.current_balance)}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Liabilities Breakdown */}
-        <div className="card">
-          <div className="card-header">
-            <span className="card-title">Liabilities</span>
-            <span style={{ color: 'var(--accent-red)', fontWeight: 600 }}>
-              {formatCurrency(netWorth.total_liabilities)}
-            </span>
-          </div>
-          {liabilities.length === 0 ? (
-            <div className="empty-state">
-              <p>No liability accounts linked</p>
-            </div>
-          ) : (
-            <>
-              <div style={{ height: '200px', marginBottom: '16px' }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={liabilities} layout="vertical" margin={{ left: 100 }}>
-                    <XAxis type="number" hide />
-                    <YAxis 
-                      type="category" 
-                      dataKey="name" 
-                      stroke="var(--text-secondary)"
-                      fontSize={12}
-                      width={100}
-                    />
-                    <Tooltip
-                      contentStyle={{ 
-                        background: 'var(--bg-card)', 
-                        border: '1px solid var(--border-color)',
-                      }}
-                      formatter={(value) => formatCurrencyFull(Math.abs(value))}
-                    />
-                    <Bar dataKey="current_balance" name="Balance">
-                      {liabilities.map((entry, index) => (
-                        <Cell key={entry.id} fill={`hsl(${0 + index * 15}, 70%, 60%)`} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="table-container">
-                <table>
-                  <tbody>
-                    {liabilities.map((account) => (
-                      <tr key={account.id}>
-                        <td>
-                          <div style={{ fontWeight: 500 }}>{account.name}</div>
-                          <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{account.institution_name}</div>
-                        </td>
-                        <td style={{ textAlign: 'right' }}>
-                          <span className="transaction-amount expense">
-                            {formatCurrencyFull(Math.abs(account.current_balance))}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
+        </section>
+      )}
     </div>
+  );
+}
+
+function BalancePanel({ title, total, accounts, tone, currency }) {
+  return (
+    <section className="panel balance-panel">
+      <div className="panel-header">
+        <div><h2>{title}</h2><span>{accounts.length} linked {accounts.length === 1 ? 'account' : 'accounts'}</span></div>
+        <strong className={tone}>{currency(Math.abs(total))}</strong>
+      </div>
+      {accounts.length === 0 ? <div className="empty-state compact"><p>No {title.toLowerCase()} linked.</p></div> : (
+        <ul className="balance-list">
+          {accounts.map((account) => (
+            <li key={account.id}>
+              <div><strong>{account.name}</strong><span>{account.institution_name} · {account.subtype || account.type}</span></div>
+              <strong>{currency(Math.abs(account.current_balance), 2)}</strong>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 

@@ -1,9 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Check, PencilSimple, X } from '@phosphor-icons/react';
 
 function AccountCard({ account, onUpdateName }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState(account.name || '');
   const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState('');
   const inputRef = useRef(null);
 
   useEffect(() => {
@@ -13,124 +15,97 @@ function AccountCard({ account, onUpdateName }) {
     }
   }, [isEditing]);
 
-  const formatCurrency = (amount) => {
-    if (amount == null) return '$0.00';
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: account.iso_currency_code || 'USD',
-    }).format(amount);
-  };
+  const formatCurrency = (amount) => new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: account.iso_currency_code || 'USD',
+  }).format(Number(amount) || 0);
 
-  const balance = parseFloat(account.current_balance) || 0;
-  const isPositive = ['credit', 'loan'].includes(account.type)
-    ? balance <= 0  // For credit/loan: $0 or credits are good
-    : balance >= 0; // For other accounts: positive or zero balance is good
+  const balance = Math.abs(Number(account.current_balance) || 0);
+  const isLiability = ['credit', 'loan'].includes(account.type);
 
-  const handleNameClick = () => {
+  const cancelEdit = () => {
+    setIsEditing(false);
     setEditedName(account.name || '');
-    setIsEditing(true);
+    setError('');
   };
 
   const handleSave = async () => {
     const trimmedName = editedName.trim();
-    if (!trimmedName || trimmedName === account.name) {
-      setIsEditing(false);
-      setEditedName(account.name || '');
+    if (!trimmedName) {
+      setError('Enter a name for this account.');
+      return;
+    }
+    if (trimmedName === account.name) {
+      cancelEdit();
       return;
     }
 
     setIsSaving(true);
+    setError('');
     try {
-      if (onUpdateName) {
-        await onUpdateName(account.id, trimmedName);
-      }
+      await onUpdateName?.(account.id, trimmedName);
       setIsEditing(false);
-    } catch (error) {
-      console.error('Error updating account name:', error);
-      setEditedName(account.name || '');
+    } catch (saveError) {
+      console.error('Error updating account name:', saveError);
+      setError('Could not save that name. Try again.');
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
+  const handleKeyDown = (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
       handleSave();
-    } else if (e.key === 'Escape') {
-      setIsEditing(false);
-      setEditedName(account.name || '');
     }
-  };
-
-  const handleBlur = () => {
-    handleSave();
+    if (event.key === 'Escape') cancelEdit();
   };
 
   return (
-    <div className="account-card">
-      <div className="account-card-header">
-        <div>
-          <div className="account-name">
-            {isEditing ? (
-              <input
-                ref={inputRef}
-                type="text"
-                value={editedName}
-                onChange={(e) => setEditedName(e.target.value)}
-                onKeyDown={handleKeyDown}
-                onBlur={handleBlur}
-                disabled={isSaving}
-                className="account-name-input"
-                style={{
-                  background: 'var(--bg-secondary)',
-                  border: '1px solid var(--accent-primary)',
-                  borderRadius: '4px',
-                  color: 'var(--text-primary)',
-                  fontSize: 'inherit',
-                  fontWeight: 'inherit',
-                  padding: '2px 6px',
-                  width: '100%',
-                  maxWidth: '200px',
-                  outline: 'none',
-                }}
-              />
-            ) : (
-              <span 
-                onClick={handleNameClick}
-                style={{ 
-                  cursor: 'pointer',
-                  borderBottom: '1px dashed transparent',
-                  transition: 'border-color 0.2s',
-                }}
-                onMouseEnter={(e) => e.target.style.borderBottomColor = 'var(--text-muted)'}
-                onMouseLeave={(e) => e.target.style.borderBottomColor = 'transparent'}
-                title="Click to edit name"
-              >
-                {account.name}
-              </span>
-            )}
-            {account.mask && !isEditing && (
-              <span style={{ color: 'var(--text-muted)' }}> ••{account.mask}</span>
-            )}
+    <div className="account-row">
+      <div className="account-row-main">
+        {isEditing ? (
+          <div className="account-edit">
+            <label className="sr-only" htmlFor={`account-name-${account.id}`}>Account name</label>
+            <input
+              id={`account-name-${account.id}`}
+              ref={inputRef}
+              value={editedName}
+              onChange={(event) => setEditedName(event.target.value)}
+              onKeyDown={handleKeyDown}
+              disabled={isSaving}
+              aria-invalid={Boolean(error)}
+            />
+            <button className="icon-button" onClick={handleSave} disabled={isSaving} aria-label="Save account name">
+              <Check size={16} aria-hidden="true" />
+            </button>
+            <button className="icon-button" onClick={cancelEdit} disabled={isSaving} aria-label="Cancel editing">
+              <X size={16} aria-hidden="true" />
+            </button>
+            {error && <span className="field-error" role="alert">{error}</span>}
           </div>
-          <div className="account-institution">{account.institution_name}</div>
-        </div>
-        <span className="account-type">{account.subtype || account.type}</span>
+        ) : (
+          <div className="account-title-line">
+            <h3>{account.name || 'Unnamed account'}</h3>
+            <button className="edit-account-button" onClick={() => setIsEditing(true)} aria-label={`Rename ${account.name || 'account'}`}>
+              <PencilSimple size={14} aria-hidden="true" />
+            </button>
+          </div>
+        )}
+        {!isEditing && (
+          <p>
+            <span className="account-type-label">{account.subtype || account.type || 'Account'}</span>
+            {account.mask && <span> ···· {account.mask}</span>}
+          </p>
+        )}
       </div>
-      <div className={`account-balance ${isPositive ? 'positive' : 'negative'}`}>
-        {formatCurrency(Math.abs(balance))}
+      <div className="account-row-balance">
+        <strong className={isLiability ? 'negative' : ''}>{formatCurrency(balance)}</strong>
+        {account.available_balance != null && account.type === 'depository' && (
+          <span>{formatCurrency(account.available_balance)} available</span>
+        )}
+        {account.credit_limit && <span>{formatCurrency(account.credit_limit)} limit</span>}
       </div>
-      {account.available_balance != null && account.type === 'depository' && (
-        <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '8px' }}>
-          Available: {formatCurrency(account.available_balance)}
-        </div>
-      )}
-      {account.credit_limit && (
-        <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '8px' }}>
-          Credit Limit: {formatCurrency(account.credit_limit)}
-        </div>
-      )}
     </div>
   );
 }

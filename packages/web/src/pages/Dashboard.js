@@ -1,242 +1,191 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { ArrowsClockwise, ArrowUp, Info, Warning } from '@phosphor-icons/react';
+import { LineChart, Line, XAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts';
 import LinkAccount from '../components/LinkAccount';
 import api from '../api';
 
-const COLORS = ['#00d09c', '#4a9eff', '#a855f7', '#fbbf24', '#ff6b6b', '#06b6d4', '#f97316', '#84cc16'];
+const CATEGORY_COLORS = [
+  'var(--chart-1)',
+  'var(--chart-2)',
+  'var(--chart-3)',
+  'var(--chart-4)',
+  'var(--chart-6)',
+  'var(--text-muted)',
+];
 
 function Dashboard() {
   const [netWorth, setNetWorth] = useState({ total_assets: 0, total_liabilities: 0, net_worth: 0 });
+  const [history, setHistory] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [spending, setSpending] = useState([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [notice, setNotice] = useState(null);
 
   const fetchData = useCallback(async () => {
     try {
-      const [networthData, accountsData, transactionsData, spendingData] = await Promise.all([
+      const [networthData, historyData, accountsData, transactionsData, spendingData] = await Promise.all([
         api.getNetWorth(),
+        api.getNetWorthHistory(365),
         api.getAccounts(),
         api.getTransactions({ limit: 5 }),
         api.getSpendingByCategory(),
       ]);
-
       setNetWorth(networthData);
-      setAccounts(accountsData);
+      setHistory(historyData || []);
+      setAccounts(accountsData || []);
       setTransactions(transactionsData.transactions || []);
-      setSpending(spendingData.slice(0, 8)); // Top 8 categories
+      setSpending((spendingData || []).slice(0, 6));
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error('Error fetching dashboard data:', error);
+      setNotice({ type: 'error', message: 'Some financial data could not be loaded. Try syncing again.' });
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const handleSync = async () => {
     setSyncing(true);
+    setNotice(null);
     try {
       await api.refreshBalances();
       await api.sync();
       await fetchData();
+      setNotice({ type: 'success', message: 'Balances and transactions are up to date.' });
     } catch (error) {
       console.error('Error syncing:', error);
+      setNotice({ type: 'error', message: 'Sync failed. Please try again shortly.' });
     } finally {
       setSyncing(false);
     }
   };
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
+  const currency = (amount, digits = 0) => new Intl.NumberFormat('en-US', {
+    style: 'currency', currency: 'USD', minimumFractionDigits: digits, maximumFractionDigits: digits,
+  }).format(amount || 0);
 
-  const formatCurrencyFull = (amount) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
-  };
+  if (loading) return <div className="page-skeleton" aria-label="Loading overview"><span /><span /><span /></div>;
 
-  if (loading) {
-    return <div className="loading">Loading...</div>;
-  }
+  const historyData = [...history]
+    .sort((a, b) => new Date(a.snapshot_date) - new Date(b.snapshot_date))
+    .map((entry) => ({
+      date: new Date(entry.snapshot_date).toLocaleDateString('en-US', { month: 'short' }),
+      value: Number(entry.net_worth),
+    }));
+  const firstValue = historyData[0]?.value;
+  const latestValue = historyData[historyData.length - 1]?.value;
+  const change = firstValue != null && latestValue != null ? latestValue - firstValue : null;
+  const changePercent = change != null && firstValue ? (change / Math.abs(firstValue)) * 100 : null;
+  const maxSpending = Math.max(...spending.map((item) => Number(item.total) || 0), 1);
+  const spendingTotal = spending.reduce((sum, item) => sum + (Number(item.total) || 0), 0);
+  const pendingCount = transactions.filter((transaction) => transaction.pending).length;
 
   return (
-    <div>
-      <div className="page-header">
-        <h1>Dashboard</h1>
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <button 
-            className="btn btn-secondary" 
-            onClick={handleSync} 
-            disabled={syncing}
-          >
-            {syncing ? 'Syncing...' : 'Sync Data'}
+    <div className="page">
+      <header className="page-header">
+        <div>
+          <h1>Overview</h1>
+          <p>Where you stand and what changed</p>
+        </div>
+        <div className="page-actions">
+          <button className="btn btn-secondary" onClick={handleSync} disabled={syncing}>
+            <ArrowsClockwise size={16} className={syncing ? 'spin' : ''} aria-hidden="true" />
+            {syncing ? 'Syncing…' : 'Sync data'}
           </button>
           <LinkAccount onSuccess={fetchData} />
         </div>
-      </div>
+      </header>
 
-      {/* Net Worth Stats */}
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-label">Net Worth</div>
-          <div className={`stat-value ${netWorth.net_worth >= 0 ? 'positive' : 'negative'}`}>
-            {formatCurrency(netWorth.net_worth)}
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Total Assets</div>
-          <div className="stat-value positive">{formatCurrency(netWorth.total_assets)}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Total Liabilities</div>
-          <div className="stat-value negative">{formatCurrency(netWorth.total_liabilities)}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Linked Accounts</div>
-          <div className="stat-value">{accounts.length}</div>
-        </div>
-      </div>
+      {notice && <div className={`inline-notice ${notice.type}`} role={notice.type === 'error' ? 'alert' : 'status'}>{notice.message}</div>}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-        {/* Recent Transactions */}
-        <div className="card">
-          <div className="card-header">
-            <span className="card-title">Recent Transactions</span>
-            <Link to="/transactions" className="btn btn-sm btn-secondary">View All</Link>
-          </div>
+      <section className="position-panel" aria-labelledby="position-title">
+        <h2 id="position-title" className="sr-only">Where you stand</h2>
+        <div className="position-summary">
+          <span className="metric-label">Net worth</span>
+          <strong className="display-value">{currency(netWorth.net_worth)}</strong>
+          {change == null ? (
+            <span className="metric-helper">Save another snapshot to track change.</span>
+          ) : (
+            <span className={`delta-pill ${change >= 0 ? 'positive' : 'negative'}`}>
+              <ArrowUp size={13} weight="bold" className={change < 0 ? 'rotate-down' : ''} aria-hidden="true" />
+              {change >= 0 ? '+' : '−'}{currency(Math.abs(change))} ({changePercent == null ? 'n/a' : `${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(1)}%`})
+              <span>since {historyData[0]?.date}</span>
+            </span>
+          )}
+          <div className="position-divider" />
+          <dl className="position-details">
+            <div><dt>Assets</dt><dd>{currency(netWorth.total_assets)}</dd></div>
+            <div><dt>Liabilities</dt><dd>−{currency(Math.abs(netWorth.total_liabilities))}</dd></div>
+            <div><dt>Accounts</dt><dd>{accounts.length} linked</dd></div>
+          </dl>
+        </div>
+
+        <div className="position-chart" role="img" aria-label="Net worth history over the last twelve months">
+          <div className="chart-heading"><span>Last 12 months</span><span>{historyData.length ? `${currency(Math.min(...historyData.map((item) => item.value)))} – ${currency(Math.max(...historyData.map((item) => item.value)))}` : 'No history yet'}</span></div>
+          {historyData.length >= 2 ? (
+            <ResponsiveContainer width="100%" height={165}>
+              <LineChart data={historyData} margin={{ top: 12, right: 8, left: 8, bottom: 0 }}>
+                <CartesianGrid vertical={false} stroke="var(--border)" />
+                <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)', fontSize: 11 }} />
+                <Tooltip formatter={(value) => currency(value)} contentStyle={{ borderColor: 'var(--border)', borderRadius: 8, fontSize: 12 }} />
+                <Line type="monotone" dataKey="value" stroke="var(--chart-1)" strokeWidth={2.25} dot={false} activeDot={{ r: 4 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : <div className="chart-empty">Save snapshots to build your trend.</div>}
+        </div>
+      </section>
+
+      <div className="dashboard-grid">
+        <section className="panel recent-activity" aria-labelledby="recent-heading">
+          <div className="panel-header"><h2 id="recent-heading">Recent activity</h2><Link to="/transactions">View all</Link></div>
           {transactions.length === 0 ? (
-            <div className="empty-state">
-              <h3>No transactions yet</h3>
-              <p>Link an account to see your transactions</p>
-            </div>
+            <div className="empty-state compact"><h3>No activity yet</h3><p>Link an account to see recent transactions.</p></div>
           ) : (
-            <div className="table-container">
-              <table>
-                <tbody>
-                  {transactions.map((txn) => (
-                    <tr key={txn.id}>
-                      <td>
-                        <div style={{ fontWeight: 500 }}>{txn.merchant_name || txn.name}</div>
-                        <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{txn.date}</div>
-                      </td>
-                      <td style={{ textAlign: 'right' }}>
-                        <span className={`transaction-amount ${txn.amount < 0 ? 'income' : 'expense'}`}>
-                          {txn.amount < 0 ? '+' : '-'}{formatCurrencyFull(Math.abs(txn.amount))}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
-        {/* Spending by Category */}
-        <div className="card">
-          <div className="card-header">
-            <span className="card-title">Spending by Category</span>
-          </div>
-          {spending.length === 0 ? (
-            <div className="empty-state">
-              <h3>No spending data</h3>
-              <p>Sync your transactions to see spending breakdown</p>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              <div style={{ width: '50%', height: '200px' }}>
-                <ResponsiveContainer>
-                  <PieChart>
-                    <Pie
-                      data={spending}
-                      dataKey="total"
-                      nameKey="category"
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={40}
-                      outerRadius={80}
-                    >
-                      {spending.map((entry, index) => (
-                        <Cell key={entry.category} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                      formatter={(value) => formatCurrencyFull(value)}
-                      contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)' }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div style={{ width: '50%' }}>
-                {spending.map((cat, index) => (
-                  <div key={cat.category} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px' }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ width: '12px', height: '12px', borderRadius: '2px', background: COLORS[index % COLORS.length] }}></span>
-                      {cat.category || 'Other'}
-                    </span>
-                    <span style={{ color: 'var(--text-secondary)' }}>{formatCurrencyFull(cat.total)}</span>
+            <ul className="activity-list">
+              {transactions.map((transaction) => (
+                <li key={transaction.id}>
+                  <span className="activity-monogram" aria-hidden="true">{(transaction.merchant_name || transaction.name || '?').charAt(0).toUpperCase()}</span>
+                  <div className="activity-copy">
+                    <strong>{transaction.merchant_name || transaction.name}</strong>
+                    <span>{transaction.category || 'Uncategorized'} · {transaction.account_name}</span>
                   </div>
-                ))}
-              </div>
-            </div>
+                  {transaction.pending && <span className="pending-badge">Pending</span>}
+                  <span className={`transaction-amount ${transaction.amount < 0 ? 'income' : ''}`}>
+                    {transaction.amount < 0 ? '+' : '−'}{currency(Math.abs(transaction.amount), 2)}
+                  </span>
+                </li>
+              ))}
+            </ul>
           )}
-        </div>
-      </div>
+        </section>
 
-      {/* Accounts Overview */}
-      <div className="card" style={{ marginTop: '24px' }}>
-        <div className="card-header">
-          <span className="card-title">Accounts Overview</span>
-          <Link to="/accounts" className="btn btn-sm btn-secondary">Manage Accounts</Link>
-        </div>
-        {accounts.length === 0 ? (
-          <div className="empty-state">
-            <h3>No accounts linked</h3>
-            <p>Click "Link Account" to connect your bank accounts</p>
-          </div>
-        ) : (
-          <div className="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th>Account</th>
-                  <th>Institution</th>
-                  <th>Type</th>
-                  <th style={{ textAlign: 'right' }}>Balance</th>
-                </tr>
-              </thead>
-              <tbody>
-                {accounts.slice(0, 5).map((account) => (
-                  <tr key={account.id}>
-                    <td>
-                      <div style={{ fontWeight: 500 }}>{account.name}</div>
-                      {account.mask && <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>••{account.mask}</div>}
-                    </td>
-                    <td>{account.institution_name}</td>
-                    <td><span className="category-badge">{account.subtype || account.type}</span></td>
-                    <td style={{ textAlign: 'right' }}>
-                      <span className={`transaction-amount ${['credit', 'loan'].includes(account.type) ? 'expense' : 'income'}`}>
-                        {formatCurrencyFull(account.current_balance)}
-                      </span>
-                    </td>
-                  </tr>
+        <div className="dashboard-side">
+          <section className="panel spending-panel" aria-labelledby="spending-heading">
+            <div className="panel-header"><h2 id="spending-heading">Spending this month</h2><strong>{currency(spendingTotal)}</strong></div>
+            {spending.length === 0 ? <div className="empty-state compact"><p>Sync transactions to see spending.</p></div> : (
+              <ul className="spending-list">
+                {spending.map((category, index) => (
+                  <li key={category.category || index}>
+                    <div><span>{category.category || 'Other'}</span><strong>{currency(category.total)}</strong></div>
+                    <span className="spending-track" aria-hidden="true"><span style={{ width: `${Math.max(5, (Number(category.total) / maxSpending) * 100)}%`, background: CATEGORY_COLORS[index % CATEGORY_COLORS.length] }} /></span>
+                  </li>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+              </ul>
+            )}
+          </section>
+
+          <section className="panel attention-panel" aria-labelledby="attention-heading">
+            <h2 id="attention-heading">Worth a look</h2>
+            <ul>
+              <li><Warning size={16} weight="fill" aria-hidden="true" /><div><strong>{pendingCount} transaction{pendingCount === 1 ? '' : 's'} pending</strong><span>These charges have not cleared yet.</span></div></li>
+              <li><Info size={16} weight="fill" aria-hidden="true" /><div><strong>{spending[0]?.category || 'Spending'} is your largest category</strong><span>{spending[0] ? `${currency(spending[0].total)} posted in this period.` : 'More detail appears after your next sync.'}</span></div></li>
+            </ul>
+          </section>
+        </div>
       </div>
     </div>
   );

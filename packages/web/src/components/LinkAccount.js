@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { usePlaidLink } from 'react-plaid-link';
+import { Plus, SpinnerGap } from '@phosphor-icons/react';
 import api from '../api';
 
 // Check if we're returning from OAuth redirect
@@ -11,13 +12,10 @@ function PlaidLinkHandler({ linkToken, onSuccess, onExit, isOAuth, shouldOpen })
   
   const handleSuccess = useCallback(async (publicToken, metadata) => {
     try {
-      console.log('Plaid Link success - publicToken:', publicToken);
-      console.log('Plaid Link success - metadata:', metadata);
       const payload = {
         public_token: publicToken,
         institution: metadata.institution,
       };
-      console.log('Sending exchange request with payload:', payload);
       await api.exchangePublicToken(payload);
       
       // Trigger initial sync
@@ -44,24 +42,21 @@ function PlaidLinkHandler({ linkToken, onSuccess, onExit, isOAuth, shouldOpen })
       localStorage.removeItem('link_token');
     }
     
-    if (onExit) {
-      onExit();
-    }
-    
-    // Log the error for debugging
+    let userMessage = '';
     if (err) {
       console.error('Plaid Link error:', err);
       console.error('Error metadata:', metadata);
-      
-      // Show user-friendly message
+
       if (err.error_code === 'INSTITUTION_NOT_RESPONDING') {
-        alert('The institution is not responding. Please try again later.');
+        userMessage = 'The institution is not responding. Please try again later.';
       } else if (err.error_code === 'INSTITUTION_DOWN') {
-        alert('This institution is temporarily unavailable. Please try again later.');
+        userMessage = 'This institution is temporarily unavailable. Please try again later.';
       } else if (err.error_message) {
-        alert(`Error: ${err.error_message}`);
+        userMessage = err.error_message;
       }
     }
+
+    if (onExit) onExit(userMessage);
   }, [isOAuth, onExit]);
 
   const config = {
@@ -120,8 +115,6 @@ function LinkAccount({ onSuccess }) {
       }
       
       const data = await api.createLinkToken();
-      console.log('Link token data:', data);
-      
       if (data.error) {
         console.error('Link token error:', data);
         setError(data.error);
@@ -141,9 +134,10 @@ function LinkAccount({ onSuccess }) {
     }
   };
 
-  const handleLinkExit = () => {
+  const handleLinkExit = (message = '') => {
     setIsLinking(false);
     setLinkToken(null);
+    if (message) setError(message);
   };
 
   const handleLinkSuccess = () => {
@@ -161,15 +155,12 @@ function LinkAccount({ onSuccess }) {
         onClick={handleClick} 
         disabled={loading || isLinking}
       >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <line x1="12" y1="5" x2="12" y2="19"></line>
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
-        {loading ? 'Loading...' : 'Link Account'}
+        {loading ? <SpinnerGap size={16} className="spin" aria-hidden="true" /> : <Plus size={16} weight="bold" aria-hidden="true" />}
+        {loading ? 'Preparing…' : 'Link account'}
       </button>
       
       {error && (
-        <span style={{ color: 'var(--accent-red)', marginLeft: '12px', fontSize: '14px' }}>
+        <span className="inline-error" role="alert">
           {error}
         </span>
       )}

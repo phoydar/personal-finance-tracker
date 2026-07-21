@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
 import { GoogleLogin } from '@react-oauth/google';
+import { LockKey } from '@phosphor-icons/react';
 import { useAuth } from '../context/AuthContext';
 
 function Login() {
   const { login } = useAuth();
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
-  const googleClientIdConfigured = Boolean(
-    process.env.REACT_APP_GOOGLE_CLIENT_ID?.trim()
-  );
+  const googleClientIdConfigured = Boolean(process.env.REACT_APP_GOOGLE_CLIENT_ID?.trim());
 
   const handleGoogleSuccess = async (credentialResponse) => {
     setError(null);
@@ -22,50 +21,55 @@ function Login() {
     }
   };
 
-  const handleGoogleError = () => {
-    setError('Google sign-in was unsuccessful. Please try again.');
-  };
-
   return (
-    <div className="login-page">
-      <div className="login-card">
-        <div className="login-logo">
-          <h1>Finance<span>Tracker</span></h1>
-          <p>Your personal finance dashboard</p>
+    <main className="login-page">
+      <section className="login-context" aria-hidden="true">
+        <div className="login-brand"><span className="brand-mark">L</span><span>Ledger</span></div>
+        <div className="login-preview-wrap">
+          <p>A calm, private place to see where you stand.</p>
+          <div className="login-preview-card">
+            <span className="metric-label">Net worth</span>
+            <strong className="login-preview-value">$379,175</strong>
+            <span className="positive-delta">▲ +$4,210 (+1.1%) this month</span>
+            <div className="preview-divider" />
+            <dl>
+              <div><dt>Assets</dt><dd>$692,821</dd></div>
+              <div><dt>Liabilities</dt><dd>−$313,645</dd></div>
+            </dl>
+          </div>
         </div>
+        <p className="login-privacy">Your data stays private. Read-only bank connections via Plaid.</p>
+      </section>
 
-        <div className="login-divider" />
-
-        <div className="login-content">
-          <h2>Sign in to continue</h2>
-          <p>Use your Google account to securely access your financial data.</p>
+      <section className="login-auth">
+        <div className="login-card">
+          <span className="mobile-login-brand"><span className="brand-mark">L</span> Ledger</span>
+          <h1>Welcome back</h1>
+          <p>Sign in to review your finances.</p>
 
           <div className="login-button-wrapper">
             {!googleClientIdConfigured ? (
-              <div className="login-error">
-                Google sign-in is not configured for this deployment.
-              </div>
+              <div className="inline-notice error" role="alert">Google sign-in is not configured for this deployment.</div>
             ) : loading ? (
-              <div className="login-loading">Signing in...</div>
+              <div className="login-loading" role="status">Signing in…</div>
             ) : (
               <GoogleLogin
                 onSuccess={handleGoogleSuccess}
-                onError={handleGoogleError}
-                theme="filled_black"
+                onError={() => setError('Google sign-in was unsuccessful. Please try again.')}
+                theme="outline"
                 size="large"
-                width="300"
-                text="signin_with"
+                width="360"
+                text="continue_with"
                 shape="rectangular"
               />
             )}
           </div>
 
-          {error && googleClientIdConfigured && (
-            <div className="login-error">{error}</div>
-          )}
+          {error && googleClientIdConfigured && <div className="inline-notice error" role="alert">{error}</div>}
+          <div className="login-security"><LockKey size={15} aria-hidden="true" /> Private and encrypted. Only you can access this account.</div>
         </div>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }
 

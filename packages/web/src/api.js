@@ -41,9 +41,7 @@ export const api = {
   // Plaid
   createLinkToken: () => apiRequest('/create_link_token'),
   exchangePublicToken: (data) => {
-    console.log('api.exchangePublicToken - input data:', data);
     const body = JSON.stringify(data);
-    console.log('api.exchangePublicToken - stringified body:', body);
     return apiRequest('/exchange_public_token', {
       method: 'POST',
       body: body,

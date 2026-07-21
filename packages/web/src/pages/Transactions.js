@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { format, subDays } from 'date-fns';
+import { ArrowsClockwise, MagnifyingGlass, Receipt } from '@phosphor-icons/react';
 import api from '../api';
 
 function Transactions() {
@@ -8,182 +9,152 @@ function Transactions() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
-  
-  // Filters
+  const [notice, setNotice] = useState(null);
   const [search, setSearch] = useState('');
   const [accountId, setAccountId] = useState('');
   const [startDate, setStartDate] = useState(format(subDays(new Date(), 30), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [limit] = useState(50);
+  const limit = 50;
   const [offset, setOffset] = useState(0);
 
   const fetchTransactions = useCallback(async () => {
     try {
-      const params = {
-        limit: limit.toString(),
-        offset: offset.toString(),
-      };
-      
+      const params = { limit: limit.toString(), offset: offset.toString() };
       if (search) params.search = search;
       if (accountId) params.account_id = accountId;
       if (startDate) params.start_date = startDate;
       if (endDate) params.end_date = endDate;
-
       const data = await api.getTransactions(params);
-      
       setTransactions(data.transactions || []);
       setTotal(data.total || 0);
     } catch (error) {
       console.error('Error fetching transactions:', error);
+      setNotice({ type: 'error', text: 'Transactions could not be loaded. Try again shortly.' });
     } finally {
       setLoading(false);
     }
-  }, [search, accountId, startDate, endDate, limit, offset]);
+  }, [search, accountId, startDate, endDate, offset]);
 
-  const fetchAccounts = useCallback(async () => {
-    try {
-      const data = await api.getAccounts();
-      setAccounts(data);
-    } catch (error) {
-      console.error('Error fetching accounts:', error);
-    }
+  useEffect(() => {
+    api.getAccounts()
+      .then((data) => setAccounts(data || []))
+      .catch((error) => console.error('Error fetching accounts:', error));
   }, []);
 
   useEffect(() => {
-    fetchAccounts();
-  }, [fetchAccounts]);
-
-  useEffect(() => {
     setLoading(true);
-    const timer = setTimeout(() => {
-      fetchTransactions();
-    }, 300); // Debounce search
-    
+    const timer = setTimeout(fetchTransactions, 300);
     return () => clearTimeout(timer);
   }, [fetchTransactions]);
 
   const handleSync = async () => {
     setSyncing(true);
+    setNotice(null);
     try {
       const result = await api.sync();
-      alert(`Sync complete: ${result.added} added, ${result.modified} modified, ${result.removed} removed`);
-      fetchTransactions();
+      await fetchTransactions();
+      setNotice({
+        type: 'success',
+        text: `Sync complete: ${result.added || 0} added, ${result.modified || 0} updated, and ${result.removed || 0} removed.`,
+      });
     } catch (error) {
       console.error('Error syncing:', error);
+      setNotice({ type: 'error', text: 'Transactions could not be synced. Your existing history is unchanged.' });
     } finally {
       setSyncing(false);
     }
   };
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(Math.abs(amount));
-  };
+  const formatCurrency = (amount) => new Intl.NumberFormat('en-US', {
+    style: 'currency', currency: 'USD', minimumFractionDigits: 2,
+  }).format(Math.abs(Number(amount) || 0));
 
   const totalPages = Math.ceil(total / limit);
   const currentPage = Math.floor(offset / limit) + 1;
 
   return (
-    <div>
-      <div className="page-header">
-        <h1>Transactions</h1>
-        <button 
-          className="btn btn-primary" 
-          onClick={handleSync}
-          disabled={syncing}
-        >
-          {syncing ? 'Syncing...' : 'Sync Transactions'}
+    <div className="page-stack">
+      <header className="page-header">
+        <div>
+          <p className="eyebrow">Money movement</p>
+          <h1>Transactions</h1>
+          <p>Search and review activity across every linked account.</p>
+        </div>
+        <button className="btn btn-primary" onClick={handleSync} disabled={syncing}>
+          <ArrowsClockwise size={17} className={syncing ? 'spin' : ''} aria-hidden="true" />
+          {syncing ? 'Syncing…' : 'Sync transactions'}
         </button>
-      </div>
+      </header>
 
-      {/* Filters */}
-      <div className="filters">
-        <input
-          type="text"
-          className="input"
-          placeholder="Search transactions..."
-          value={search}
-          onChange={(e) => { setSearch(e.target.value); setOffset(0); }}
-          style={{ maxWidth: '250px' }}
-        />
-        <select
-          className="input"
-          value={accountId}
-          onChange={(e) => { setAccountId(e.target.value); setOffset(0); }}
-          style={{ maxWidth: '200px' }}
-        >
-          <option value="">All Accounts</option>
-          {accounts.map((account) => (
-            <option key={account.id} value={account.id}>
-              {account.name} ({account.institution_name})
-            </option>
-          ))}
-        </select>
-        <input
-          type="date"
-          className="input"
-          value={startDate}
-          onChange={(e) => { setStartDate(e.target.value); setOffset(0); }}
-          style={{ maxWidth: '160px' }}
-        />
-        <input
-          type="date"
-          className="input"
-          value={endDate}
-          onChange={(e) => { setEndDate(e.target.value); setOffset(0); }}
-          style={{ maxWidth: '160px' }}
-        />
-      </div>
+      {notice && (
+        <div className={`inline-notice inline-notice-${notice.type}`} role={notice.type === 'error' ? 'alert' : 'status'}>
+          {notice.text}
+        </div>
+      )}
 
-      {/* Transactions Table */}
-      <div className="card">
+      <section className="transaction-filters" aria-label="Transaction filters">
+        <label className="search-field">
+          <span className="sr-only">Search transactions</span>
+          <MagnifyingGlass size={17} aria-hidden="true" />
+          <input
+            type="search"
+            placeholder="Search merchants or descriptions"
+            value={search}
+            onChange={(event) => { setSearch(event.target.value); setOffset(0); }}
+          />
+        </label>
+        <label>
+          <span className="sr-only">Filter by account</span>
+          <select value={accountId} onChange={(event) => { setAccountId(event.target.value); setOffset(0); }}>
+            <option value="">All accounts</option>
+            {accounts.map((account) => (
+              <option key={account.id} value={account.id}>{account.name} · {account.institution_name}</option>
+            ))}
+          </select>
+        </label>
+        <label className="date-filter">
+          <span>From</span>
+          <input type="date" value={startDate} onChange={(event) => { setStartDate(event.target.value); setOffset(0); }} />
+        </label>
+        <label className="date-filter">
+          <span>To</span>
+          <input type="date" value={endDate} onChange={(event) => { setEndDate(event.target.value); setOffset(0); }} />
+        </label>
+      </section>
+
+      <section className="panel transaction-panel">
+        <div className="panel-header transaction-panel-header">
+          <div><h2>Activity</h2><span>{total.toLocaleString()} {total === 1 ? 'transaction' : 'transactions'}</span></div>
+        </div>
         {loading ? (
-          <div className="loading">Loading...</div>
+          <div className="loading-state">Loading transactions…</div>
         ) : transactions.length === 0 ? (
-          <div className="empty-state">
+          <div className="empty-state compact">
+            <div className="empty-icon"><Receipt size={22} aria-hidden="true" /></div>
             <h3>No transactions found</h3>
-            <p>Try adjusting your filters or sync your transactions</p>
+            <p>Try a broader date range or clear one of your filters.</p>
           </div>
         ) : (
           <>
             <div className="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Description</th>
-                    <th>Category</th>
-                    <th>Account</th>
-                    <th style={{ textAlign: 'right' }}>Amount</th>
-                  </tr>
-                </thead>
+              <table className="transaction-table">
+                <thead><tr><th>Date</th><th>Merchant</th><th>Account</th><th>Amount</th></tr></thead>
                 <tbody>
-                  {transactions.map((txn) => (
-                    <tr key={txn.id}>
-                      <td style={{ whiteSpace: 'nowrap' }}>{txn.date}</td>
-                      <td>
-                        <div style={{ fontWeight: 500 }}>{txn.merchant_name || txn.name}</div>
-                        {txn.merchant_name && txn.name !== txn.merchant_name && (
-                          <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{txn.name}</div>
-                        )}
-                      </td>
-                      <td>
-                        {txn.pending ? (
-                          <span className="pending-badge">Pending</span>
-                        ) : (
-                          <span className="category-badge">{txn.category || 'Uncategorized'}</span>
-                        )}
-                      </td>
-                      <td>
-                        <div style={{ fontSize: '13px' }}>{txn.account_name}</div>
-                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{txn.institution_name}</div>
-                      </td>
-                      <td style={{ textAlign: 'right' }}>
-                        <span className={`transaction-amount ${txn.amount < 0 ? 'income' : 'expense'}`}>
-                          {txn.amount < 0 ? '+' : '-'}{formatCurrency(txn.amount)}
+                  {transactions.map((transaction) => (
+                    <tr key={transaction.id}>
+                      <td data-label="Date">{transaction.date}</td>
+                      <td data-label="Merchant">
+                        <strong>{transaction.merchant_name || transaction.name}</strong>
+                        <span>
+                          {transaction.category || 'Uncategorized'}
+                          {transaction.pending && <span className="pending-badge">Pending</span>}
                         </span>
+                      </td>
+                      <td data-label="Account"><strong>{transaction.account_name}</strong><span>{transaction.institution_name}</span></td>
+                      <td data-label="Amount">
+                        <strong className={`transaction-amount ${transaction.amount < 0 ? 'income' : 'expense'}`}>
+                          {transaction.amount < 0 ? '+' : '−'}{formatCurrency(transaction.amount)}
+                        </strong>
                       </td>
                     </tr>
                   ))}
@@ -191,36 +162,19 @@ function Transactions() {
               </table>
             </div>
 
-            {/* Pagination */}
             {totalPages > 1 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '24px', padding: '0 16px' }}>
-                <span style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
-                  Showing {offset + 1}-{Math.min(offset + limit, total)} of {total} transactions
-                </span>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button
-                    className="btn btn-sm btn-secondary"
-                    onClick={() => setOffset(Math.max(0, offset - limit))}
-                    disabled={offset === 0}
-                  >
-                    Previous
-                  </button>
-                  <span style={{ padding: '8px 16px', color: 'var(--text-secondary)' }}>
-                    Page {currentPage} of {totalPages}
-                  </span>
-                  <button
-                    className="btn btn-sm btn-secondary"
-                    onClick={() => setOffset(offset + limit)}
-                    disabled={offset + limit >= total}
-                  >
-                    Next
-                  </button>
+              <nav className="pagination" aria-label="Transaction pages">
+                <span>Showing {offset + 1}–{Math.min(offset + limit, total)} of {total}</span>
+                <div>
+                  <button className="btn btn-sm btn-secondary" onClick={() => setOffset(Math.max(0, offset - limit))} disabled={offset === 0}>Previous</button>
+                  <span>Page {currentPage} of {totalPages}</span>
+                  <button className="btn btn-sm btn-secondary" onClick={() => setOffset(offset + limit)} disabled={offset + limit >= total}>Next</button>
                 </div>
-              </div>
+              </nav>
             )}
           </>
         )}
-      </div>
+      </section>
     </div>
   );
 }
