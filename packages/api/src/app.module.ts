@@ -9,6 +9,7 @@ import { NetworthModule } from "./networth/networth.module"
 import { AuthModule } from "./auth/auth.module"
 import { JwtAuthGuard } from "./auth/jwt-auth.guard"
 import { HealthController } from "./health.controller"
+import { WebModule } from "./web.module"
 import { validateAuthConfig } from "./auth/auth.config"
 
 @Module({
@@ -48,7 +49,8 @@ import { validateAuthConfig } from "./auth/auth.config"
     PlaidModule,
     AccountsModule,
     TransactionsModule,
-    NetworthModule
+    NetworthModule,
+    WebModule
   ],
   controllers: [HealthController],
   providers: [

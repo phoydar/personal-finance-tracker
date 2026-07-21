@@ -12,6 +12,8 @@
     "build": "npm-run-all build:api build:web",
     "build:api": "npm run build --workspace=@finance-tracker/api",
     "build:web": "npm run build --workspace=@finance-tracker/web",
+    "start": "npm run start:prod --workspace=@finance-tracker/api",
+    "test": "npm run build && node --test packages/api/test/static-serving.test.js",
     "db:start": "docker-compose up -d",
     "db:stop": "docker-compose down",
     "db:reset": "docker-compose down -v && docker-compose up -d"
